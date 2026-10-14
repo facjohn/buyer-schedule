@@ -31,7 +31,8 @@ function formFromRow(row) {
     status: row.status === '확정' ? '확정' : '미정',
     exporter: row.exporter || '',
     origin: row.origin || '',
-    no: row.no === null || row.no === undefined ? '' : String(row.no)
+    no: row.no === null || row.no === undefined ? '' : String(row.no),
+    etaTbd: false // ETA 미정 버튼(날짜 없이 저장)
   };
 }
 
@@ -76,7 +77,9 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
     }
     const f = formFromRow(src);
     // 다음 선적: 다음 번호, 날짜는 새로 고르고, 산지가는 다시 확인해서 넣게 비운다(규칙 6)
-    return asNext ? { ...f, no: suggestNo(data, src.buyer, year), eta: '', loadDate: '', cost: '', status: '미정' } : f;
+    return asNext
+      ? { ...f, no: suggestNo(data, src.buyer, year), eta: '', loadDate: '', cost: '', status: '미정' }
+      : { ...f, etaTbd: !f.eta };
   });
   // 회사 칸에 직접 적힌 줄이었는지(열 때 값). 고치기에서만 그 값을 지킨다.
   const [initExporterSet] = useState(() => mode === 'edit' && !!(src && src.exporterSet));
@@ -152,6 +155,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       touch.forEach((k) => { t[k] = true; });
       const next = { ...s.form, ...patch };
       if ('buyer' in patch && !t.exporter) next.exporter = defaultExporter(data, next.buyer);
+      if ('eta' in patch && patch.eta) next.etaTbd = false;
       // No.를 직접 치지 않았으면 바이어·ETA에 맞춰 다음 번호로(원래 바이어로 돌아오면 원래 번호)
       if (!t.no && ('buyer' in patch || 'eta' in patch)) {
         const year = Number((next.eta || data.today).slice(0, 4));
@@ -195,7 +199,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   need('ship', '운송');
   need('specKo', '스펙');
   if (form.specKo.trim()) need('specEn', '스펙 영어');
-  need('eta', 'ETA');
+  if (!form.etaTbd) need('eta', 'ETA(모르면 ETA 미정)');
   const badMoney = MONEY_FIELDS.some((f) => Number.isNaN(parseMoney(form[f])));
 
   function buildChanges() {
@@ -422,8 +426,15 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
               placeholder="정해지면" clearable today={data.today} />
           </Field>
           <Field label="ETA">
-            <DateField value={form.eta} onChange={(v) => update({ eta: v })} label="ETA" today={data.today} />
+            <DateField value={form.eta} onChange={(v) => update({ eta: v })} label="ETA" today={data.today}
+              placeholder={form.etaTbd ? 'ETA 미정' : '날짜 고르기'} />
           </Field>
+        </div>
+        <div className="eta-tbd">
+          <Chip on={form.etaTbd}
+            onClick={() => update(form.etaTbd ? { etaTbd: false } : { etaTbd: true, eta: '', status: '미정' })}>
+            ETA 미정
+          </Chip>
         </div>
         {etaPast && (
           <p className="warn"><IconAlert size={18} /> ETA가 지난 날짜예요. 해와 날짜를 확인해 주세요.</p>

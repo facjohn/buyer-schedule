@@ -35,8 +35,14 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
         {row.origin && <span className="origin">· {row.origin}</span>}
       </div>
       <div className="srow-eta">
-        <span className="eta">{row.eta ? fmtKo(row.eta) : '날짜 없음'}</span>
-        {row.status !== '확정' && <span className="chip-tbc">미정</span>}
+        {row.eta ? (
+          <>
+            <span className="eta">{fmtKo(row.eta)}</span>
+            {row.status !== '확정' && <span className="chip-tbc">미정</span>}
+          </>
+        ) : (
+          <span className="chip-tbc">ETA 미정</span>
+        )}
       </div>
       <div className={'srow-price num' + (price.length > 8 ? ' small' : '')}>
         {price || <span className="empty">—</span>}

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, addMonths, addDays } from './dates.js';
 import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
-import { buyerCards, containersOf, expectedNo, filterPeriod, groupByMonth, homeStats, lastCost, lastPrice, shipmentKey } from './schedule.js';
+import { buyerCards, containersOf, expectedNo, filterPeriod, groupByMonth, lastCost, lastPrice, shipmentKey } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
 
 describe('날짜 표기 (표기 규칙)', () => {
@@ -87,20 +87,23 @@ describe('스케줄 고르기·묶기', () => {
   });
   it('월 묶음은 해가 바뀌면 해를 붙인다', () => {
     const g = groupByMonth(filterPeriod(rows.filter((r) => r.buyer === 'A'), 'future', today), today);
-    expect(g.map((x) => x.label)).toEqual(['10월', '11월', '2027년 1월', '날짜 없음']);
+    expect(g.map((x) => x.label)).toEqual(['10월', '11월', '2027년 1월', 'ETA 미정']);
   });
-  it('홈 숫자: 7일 안 ETA, 미정, 산지가 빈 줄', () => {
-    const s = homeStats(rows, today);
-    expect(s.eta7.map((r) => r.id)).toEqual(['1']);
-    expect(s.tbc.map((r) => r.id).sort()).toEqual(['2', '3', '4']);
-    expect(s.noCost.map((r) => r.id)).toEqual(['2']);
-  });
-  it('바이어 카드: 남은 선적은 No. 기준(같은 No.는 한 번)', () => {
+  it('바이어 카드: 남은 선적은 No. 기준(같은 No.는 한 번), ETA 미정 선적도 센다', () => {
     const cards = buyerCards({ today, rows, buyers: [{ name: 'B' }, { name: 'A' }] });
     expect(cards[0].buyer.name).toBe('A');
-    expect(cards[0].shipments).toBe(3);
+    expect(cards[0].shipments).toBe(4);
     expect(cards[0].next).toMatchObject({ eta: '2026-10-20', fruits: '신고배' });
     expect(cards[1]).toMatchObject({ shipments: 0, next: null });
+  });
+  it('ETA 미정 선적만 있는 바이어는 날짜 있는 바이어 다음, 일정 없는 바이어 앞', () => {
+    const r = [
+      { id: 'u', buyer: 'U', no: 1, noYear: 2026, fruit: '단감', eta: '', status: '미정' },
+      { id: 'd', buyer: 'D', no: 1, noYear: 2026, fruit: '단감', eta: '2026-12-01', status: '미정' }
+    ];
+    const cards = buyerCards({ today, rows: r, buyers: [{ name: 'E' }, { name: 'U' }, { name: 'D' }] });
+    expect(cards.map((c) => c.buyer.name)).toEqual(['D', 'U', 'E']);
+    expect(cards[1].next).toMatchObject({ eta: '', fruits: '단감' });
   });
   it('예상 번호는 지운 번호까지 센 최댓값 + 1', () => {
     expect(expectedNo({ 'A|2026': 9 }, 'A', 2026)).toBe(10);

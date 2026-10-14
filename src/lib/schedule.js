@@ -1,5 +1,5 @@
 // 스케줄 줄을 고르고 묶고 세는 함수들. 화면은 이 함수들만 쓴다.
-import { addDays, addMonths, fmtKoYear, fmtMonthKo } from './dates.js';
+import { addMonths, fmtKoYear, fmtMonthKo } from './dates.js';
 
 /** 번호 해. 시트에서 No.만 적고 번호 해를 비운 줄은 서버처럼 ETA의 해로 본다 */
 export function noYearOf(r) {
@@ -37,14 +37,14 @@ export function filterPeriod(rows, period, today) {
   return sortRows(rows.filter((r) => !r.eta || (r.eta >= today && (!end || r.eta <= end))));
 }
 
-/** 월별 묶음. [{ key: '2026-10', label: '10월', rows }] (날짜 없는 줄은 맨 뒤 '날짜 없음') */
+/** 월별 묶음. [{ key: '2026-10', label: '10월', rows }] (ETA 미정 줄은 맨 뒤 'ETA 미정') */
 export function groupByMonth(rows, today) {
   const groups = [];
   const byKey = {};
   for (const r of rows) {
     const key = r.eta ? r.eta.slice(0, 7) : 'none';
     if (!byKey[key]) {
-      byKey[key] = { key, label: key === 'none' ? '날짜 없음' : fmtMonthKo(key, today), rows: [] };
+      byKey[key] = { key, label: key === 'none' ? 'ETA 미정' : fmtMonthKo(key, today), rows: [] };
       groups.push(byKey[key]);
     }
     byKey[key].rows.push(r);
@@ -52,19 +52,9 @@ export function groupByMonth(rows, today) {
   return groups.sort((a, b) => (a.key === 'none') - (b.key === 'none'));
 }
 
+/** 앞으로의 줄: ETA가 오늘 이후이거나 ETA 미정 */
 function isUpcoming(r, today) {
-  return !!r.eta && r.eta >= today;
-}
-
-/** 홈 숫자 세 칸(줄 수). 7일 안 ETA, 앞으로의 미정, 앞으로의 산지가 빈 줄 */
-export function homeStats(rows, today) {
-  const week = addDays(today, 7);
-  const up = rows.filter((r) => isUpcoming(r, today));
-  return {
-    eta7: up.filter((r) => r.eta <= week),
-    tbc: up.filter((r) => r.status !== '확정'),
-    noCost: up.filter((r) => r.cost === null || r.cost === undefined)
-  };
+  return !r.eta || r.eta >= today;
 }
 
 /**
@@ -96,13 +86,14 @@ export function buyerCards(data) {
       } : null,
       shipments: new Set(rows.map(shipmentKey)).size,
       // 카드의 '미정'은 바로 옆에 적힌 다음 선적이 미정일 때만(시안 01과 같게)
-      nextTbc: nextRows.some((r) => r.status !== '확정'),
-      rowIds: new Set(rows.map((r) => r.id))
+      nextTbc: nextRows.some((r) => r.status !== '확정')
     };
   });
+  // 다음 ETA가 가까운 순 → ETA 미정만 있는 바이어 → 일정 없는 바이어
+  const rank = (c) => (!c.next ? 2 : c.next.eta ? 0 : 1);
   return cards.sort((a, b) => {
-    if (!a.next !== !b.next) return a.next ? -1 : 1;
-    if (a.next && b.next && a.next.eta !== b.next.eta) return cmp(a.next.eta, b.next.eta);
+    if (rank(a) !== rank(b)) return rank(a) - rank(b);
+    if (rank(a) === 0 && a.next.eta !== b.next.eta) return cmp(a.next.eta, b.next.eta);
     return a.order - b.order;
   });
 }
