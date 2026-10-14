@@ -17,7 +17,7 @@ export default function CodeEntry({ message, onSubmit }) {
     e.preventDefault();
     const code = extractCode(text);
     if (!code) {
-      setError('코드는 12자 이상이에요. 받은 링크를 통째로 붙여 넣어도 돼요.');
+      setError('접속 코드를 넣어 주세요. 받은 링크를 통째로 붙여 넣어도 돼요.');
       return;
     }
     onSubmit(code);

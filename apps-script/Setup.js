@@ -29,6 +29,7 @@ var PROP_SAMPLE = 'SAMPLE';
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('바이어 스케줄')
     .addItem('팀원 코드 만들기', 'menuMakeMemberCode')
+    .addItem('팀원 링크 보기', 'menuShowMemberLinks')
     .addItem('id·No. 정리', 'menuRepair')
     .addSeparator()
     .addItem('처음 설정 (탭·머리글·드롭다운)', 'setup')
@@ -145,6 +146,23 @@ function setupMembers_(sh) {
     .map(function (h) { return String(h).trim(); });
   var idx = header.indexOf('가격 보기');
   if (idx >= 0) sh.deleteColumn(idx + 1);
+  // 접속 코드 칸은 글자 그대로(숫자만 쓴 코드도 0이나 자릿수가 바뀌지 않게)
+  var map = headerMap_('members', sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0]);
+  colRange_(sh, map, 'code').setNumberFormat('@');
+}
+
+/** 팀원 탭의 코드마다 앱 링크를 보여 준다(시트에서 코드를 직접 고친 뒤 보낼 링크) */
+function menuShowMemberLinks() {
+  var ui = SpreadsheetApp.getUi();
+  var rows = readTable_('members').rows.filter(function (r) { return str_(r.code); });
+  if (!rows.length) return ui.alert('팀원 탭에 코드가 없어요.');
+  var hasUrl = !!appLink_('x');
+  var lines = rows.map(function (r) {
+    var code = str_(r.code);
+    return '· ' + (str_(r.name) || '이름 없음') + '\n  ' + (hasUrl ? appLink_(code) : '코드: ' + code);
+  });
+  var tail = hasUrl ? '링크는 그 사람에게만 보내 주세요.' : '메뉴 > 앱 주소 넣기를 하면 링크로 보여 드려요.';
+  ui.alert('팀원 링크', lines.join('\n') + '\n\n' + tail, ui.ButtonSet.OK);
 }
 
 function protectHeader_(sh) {
@@ -174,7 +192,7 @@ function makeCode_(len) {
 
 function appLink_(code) {
   var url = PropertiesService.getScriptProperties().getProperty(PROP_APP_URL);
-  return url ? url.replace(/#.*$/, '') + '#code=' + code : '';
+  return url ? url.replace(/#.*$/, '') + '#code=' + encodeURIComponent(code) : '';
 }
 
 function addMember_(name) {

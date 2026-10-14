@@ -75,8 +75,21 @@ describe('접속 코드 (규칙 2)', () => {
     expect(log[0].count).toBe(5);
   });
 
-  it('12자 미만 코드는 팀원 탭에 있어도 거절한다', () => {
-    expect(world().call({ action: 'list', code: 'short123' }).error).toBe('bad_code');
+  it('시트에 적은 코드 그대로 통한다(짧아도, 한글·숫자만이어도, 앞뒤 공백·대소문자 상관없이)', () => {
+    const w = makeWorld({
+      members: [
+        { name: '짧은코드', code: 'short123' },
+        { name: '한글', code: '현농2026' },
+        { name: '숫자', code: 20261014 },
+        { name: '대문자', code: 'KingoTeam' }
+      ]
+    });
+    expect(w.call({ action: 'list', code: 'short123' }).me).toEqual({ name: '짧은코드' });
+    expect(w.call({ action: 'list', code: ' 현농2026 ' }).me).toEqual({ name: '한글' });
+    expect(w.call({ action: 'list', code: '20261014' }).me).toEqual({ name: '숫자' });
+    expect(w.call({ action: 'list', code: 'kingoteam' }).me).toEqual({ name: '대문자' });
+    expect(w.call({ action: 'list', code: 'short12' }).error).toBe('bad_code');
+    expect(w.call({ action: 'list', code: '' }).error).toBe('bad_code');
   });
 
   it('JSON이 아닌 본문은 거절한다', () => {

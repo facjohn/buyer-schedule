@@ -3,7 +3,7 @@ import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, addMonths, 
 import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
 import { buyerCards, containersOf, expectedNo, filterPeriod, groupByMonth, homeStats, lastCost, lastPrice, shipmentKey } from './schedule.js';
-import { extractCode } from './link.js';
+import { extractCode, codeFromUrl } from './link.js';
 
 describe('날짜 표기 (표기 규칙)', () => {
   it('한국어 "10월 20일 (화)", 영어 "Oct 20"', () => {
@@ -141,6 +141,12 @@ describe('접속 코드 읽기', () => {
   it('링크를 통째로 붙여도, 코드만 넣어도 된다', () => {
     expect(extractCode('https://x.github.io/app/#code=abcdefghjkmnpq23')).toBe('abcdefghjkmnpq23');
     expect(extractCode('  abcdefghjkmnpq23 ')).toBe('abcdefghjkmnpq23');
-    expect(extractCode('짧은코드')).toBe('');
+    expect(extractCode('짧은코드')).toBe('짧은코드');
+    expect(extractCode('https://x.github.io/app/#code=%ED%98%84%EB%86%8D2026')).toBe('현농2026');
+    expect(extractCode('   ')).toBe('');
+  });
+  it('주소에 code=가 없으면 화면 주소(#/b/바이어)를 코드로 오해하지 않는다', () => {
+    expect(codeFromUrl('#/b/%EB%B0%94%EC%9D%B4%EC%96%B4')).toBe('');
+    expect(codeFromUrl('#code=abc')).toBe('abc');
   });
 });
