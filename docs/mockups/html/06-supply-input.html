@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑥ 산지 정보 올리기</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9EBEA} .frame{margin:24px auto;width:390px;box-shadow:0 2px 12px rgba(0,0,0,.12)}</style>
+</head>
+<body>
+<!-- 화면 시안을 그대로 찍어 둔 정적 HTML입니다. 버튼은 동작하지 않습니다. 색, 크기, 간격 참고용. -->
+<div class="frame">
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #FFFFFF; color: #18201D; font-family: 'IBM Plex Sans KR', sans-serif; display: flex; flex-direction: column;">
+  <header style="display: flex; align-items: center; gap: 4px; padding: 12px 16px 4px 4px;">
+    <a href="Supply.dc.html" aria-label="산지 정보로 돌아가기" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #18201D; text-decoration: none;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px;">
+      <h1 style="margin: 0; font-size: 21px; line-height: 27px; font-weight: 700;">산지 정보 올리기</h1>
+      <p style="margin: 0; font-size: 13px; line-height: 18px; color: #56615C;">산지담당 박OO</p>
+    </div>
+  </header>
+
+  <div style="flex: 1; min-height: 0; overflow-y: auto; box-sizing: border-box; padding: 4px 16px 112px; display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">과일</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        
+          <button type="button" aria-pressed="true" style="height: 40px; padding: 0 14px; border: 1px solid #1F6B4F; border-radius: 999px; background: #E6F1EC; color: #1F6B4F; font-family: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer;">신고배</button>
+        
+          <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">신화배</button>
+        
+          <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">샤인머스캣</button>
+        
+          <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">단감</button>
+        
+          <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">설향 딸기</button>
+        
+          <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">기타</button>
+        
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 164px; gap: 8px;">
+      <div style="min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+        <label for="origin" style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">산지</label>
+        <input id="origin" type="text" value="나주 김OO 농가" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0px 14px; border: 1px solid rgb(213, 219, 215); border-radius: 12px; background: rgb(255, 255, 255); color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">회사</span>
+        <div role="group" aria-label="회사" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 2px; background: #EEF1EF; border-radius: 12px;">
+          
+            <button type="button" aria-pressed="true" style="height: 44px; border: 0; border-radius: 10px; background: #FFFFFF; color: #18201D; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); font-family: inherit; font-size: 13.5px; font-weight: 700; white-space: nowrap; cursor: pointer;">Hyun Nong</button>
+          
+            <button type="button" aria-pressed="false" style="height: 44px; border: 0; border-radius: 10px; background: transparent; color: #56615C; box-shadow: none; font-family: inherit; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer;">Royal</button>
+          
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="volume" style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">물량</label>
+      <input id="volume" type="text" value="40ft 2대" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0px 14px; border: 1px solid rgb(213, 219, 215); border-radius: 12px; background: rgb(255, 255, 255); color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">산지가격 <span style="font-weight: 400;">· 스펙마다 한 줄</span></span>
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 132px; gap: 8px;">
+        <label for="spec1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;">스펙 1</label>
+        <input id="spec1" type="text" value="5kg 7과" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0px 14px; border: 1px solid rgb(213, 219, 215); border-radius: 12px; background: rgb(255, 255, 255); color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+        <div style="display: flex; align-items: center; gap: 6px; height: 48px; box-sizing: border-box; padding: 0 12px; border: 1px solid #D5DBD7; border-radius: 12px; background: #FFFFFF;">
+          <span style="font-size: 16px; color: #56615C;">₩</span>
+          <label for="cost1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;">가격 1</label>
+          <input id="cost1" type="text" value="16,000" style="flex: 1 1 0%; min-width: 0px; height: 44px; border: 0px; outline: none; background: transparent; color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+        </div>
+        <label for="spec2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;">스펙 2</label>
+        <input id="spec2" type="text" value="5kg 9과" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0px 14px; border: 1px solid rgb(213, 219, 215); border-radius: 12px; background: rgb(255, 255, 255); color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+        <div style="display: flex; align-items: center; gap: 6px; height: 48px; box-sizing: border-box; padding: 0 12px; border: 1px solid #D5DBD7; border-radius: 12px; background: #FFFFFF;">
+          <span style="font-size: 16px; color: #56615C;">₩</span>
+          <label for="cost2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;">가격 2</label>
+          <input id="cost2" type="text" value="14,500" style="flex: 1 1 0%; min-width: 0px; height: 44px; border: 0px; outline: none; background: transparent; color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+        </div>
+      </div>
+      <button type="button" style="align-self: flex-start; height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 4px; border: 0; background: transparent; color: #1F6B4F; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+        <span>스펙 추가</span>
+      </button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">나라 <span style="font-weight: 400;">· 여러 개 선택</span></span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        
+          <button type="button" aria-pressed="true" style="height: 40px; padding: 0 12px; border: 1px solid #1F6B4F; border-radius: 999px; background: #E6F1EC; color: #1F6B4F; font-family: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer;">대만</button>
+        
+          <button type="button" aria-pressed="true" style="height: 40px; padding: 0 12px; border: 1px solid #1F6B4F; border-radius: 999px; background: #E6F1EC; color: #1F6B4F; font-family: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer;">미국</button>
+        
+          <button type="button" aria-pressed="false" style="height: 40px; padding: 0 12px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">홍콩</button>
+        
+          <button type="button" aria-pressed="false" style="height: 40px; padding: 0 12px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">베트남</button>
+        
+        <button type="button" style="height: 40px; display: flex; align-items: center; gap: 4px; padding: 0 12px; border: 1px dashed #B3BCB7; border-radius: 999px; background: #FFFFFF; color: #3F4A45; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          <span>추가</span>
+        </button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="work" style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">작업 시작</label>
+        <input id="work" type="text" value="10월 20일 (화)" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0px 12px; border: 1px solid rgb(213, 219, 215); border-radius: 12px; background: rgb(255, 255, 255); color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="load" style="font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">상차 가능</label>
+        <input id="load" type="text" value="10월 24일 (토)" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0px 12px; border: 1px solid rgb(213, 219, 215); border-radius: 12px; background: rgb(255, 255, 255); color: rgb(24, 32, 29); font-family: inherit; font-size: 16px;">
+      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 6px; padding: 12px 16px 22px; background: #FFFFFF; border-top: 1px solid #E2E6E3;">
+    <a href="Supply.dc.html" style="height: 52px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; background: #1F6B4F; color: #FFFFFF; font-size: 16px; font-weight: 600; text-decoration: none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l16-8-6 16-3-7z"></path></svg>
+      <span>바이어담당에게 보내기</span>
+    </a>
+    <p style="margin: 0; text-align: center; font-size: 12.5px; line-height: 17px; color: #56615C;">보내면 바이어담당 앱에 '새로 옴'으로 뜹니다</p>
+  </div>
+</div>
+</div>
+</body>
+</html>

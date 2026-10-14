@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⑦ 단가 흐름</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#E9EBEA} .frame{margin:24px auto;width:390px;box-shadow:0 2px 12px rgba(0,0,0,.12)}</style>
+</head>
+<body>
+<!-- 화면 시안을 그대로 찍어 둔 정적 HTML입니다. 버튼은 동작하지 않습니다. 색, 크기, 간격 참고용. -->
+<div class="frame">
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #F4F5F3; color: #18201D; font-family: 'IBM Plex Sans KR', sans-serif; display: flex; flex-direction: column;">
+  <header style="display: flex; flex-direction: column; gap: 2px; padding: 20px 20px 8px;">
+    <h1 style="margin: 0; font-size: 24px; line-height: 30px; font-weight: 700; letter-spacing: -0.4px;">단가 흐름</h1>
+    <p style="margin: 0; font-size: 13px; line-height: 18px; color: #56615C;">같은 스펙끼리 날짜 순 · 가격 보기 권한이 있는 팀원만</p>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 16px 12px;">
+    
+      <button type="button" aria-pressed="true" style="height: 40px; padding: 0 14px; border: 1px solid #1F6B4F; border-radius: 999px; background: #E6F1EC; color: #1F6B4F; font-family: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer;">신고배</button>
+    
+      <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">샤인머스캣</button>
+    
+      <button type="button" aria-pressed="false" style="height: 40px; padding: 0 14px; border: 1px solid #D5DBD7; border-radius: 999px; background: #FFFFFF; color: #18201D; font-family: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer;">단감</button>
+    
+  </div>
+
+  <div style="flex: 1; min-height: 0; overflow-y: auto; box-sizing: border-box; padding: 0 16px 100px; display: flex; flex-direction: column; gap: 12px;">
+    <section aria-label="단가 그래프" style="display: flex; flex-direction: column; gap: 12px; padding: 14px; background: #FFFFFF; border: 1px solid #E2E6E3; border-radius: 16px;">
+      <p style="margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; color: #56615C;">신고배 5kg 7과 · 박스당</p>
+
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span style="font-size: 14px; line-height: 20px; font-weight: 600;">바이어가</span>
+          <span style="margin-left: auto; font-size: 19px; line-height: 24px; font-weight: 700; color: #1F6B4F; font-variant-numeric: tabular-nums;">$14.20</span>
+          <span style="font-size: 12.5px; line-height: 18px; color: #3F4A45; font-variant-numeric: tabular-nums;">▲ $1.00</span>
+        </div>
+        <svg width="330" height="56" viewBox="0 0 330 56" role="img" aria-label="신고배 바이어가 흐름, $13.20에서 $14.20" style="display: block;">
+          <line x1="138.8" y1="0" x2="138.8" y2="56" stroke="#8A948F" stroke-width="1" stroke-dasharray="3 3" opacity="1"></line>
+          <polyline points="8.0,41.3 60.3,41.3 112.7,33.3 176.2,33.3 191.2,25.3 191.2,30.7 217.3,25.3 251.0,20.0 322.0,14.7" fill="none" stroke="#1F6B4F" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+          <circle cx="322.0" cy="14.7" r="4" fill="#1F6B4F"></circle>
+        </svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+          <span style="font-size: 14px; line-height: 20px; font-weight: 600;">산지가</span>
+          <span style="margin-left: auto; font-size: 19px; line-height: 24px; font-weight: 700; color: #8A4E05; font-variant-numeric: tabular-nums;">₩16,000</span>
+          <span style="font-size: 12.5px; line-height: 18px; color: #3F4A45; font-variant-numeric: tabular-nums;">▲ ₩1,000</span>
+        </div>
+        <svg width="330" height="56" viewBox="0 0 330 56" role="img" aria-label="신고배 산지가 흐름, ₩15,000에서 ₩16,000" style="display: block;">
+          <line x1="138.8" y1="0" x2="138.8" y2="56" stroke="#8A948F" stroke-width="1" stroke-dasharray="3 3" opacity="1"></line>
+          <polyline points="8.0,41.3 60.3,41.3 112.7,41.3 176.2,28.0 191.2,28.0 191.2,28.0 217.3,28.0 251.0,20.0 322.0,14.7" fill="none" stroke="#8A4E05" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+          <circle cx="322.0" cy="14.7" r="4" fill="#8A4E05"></circle>
+        </svg>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; gap: 8px; font-size: 12px; line-height: 16px; color: #56615C;">
+        <span>9월 8일</span>
+        <span>점선 = 오늘 (10월 13일)</span>
+        <span>12월 1일</span>
+      </div>
+    </section>
+
+    <section aria-label="단가 목록" style="display: flex; flex-direction: column; background: #FFFFFF; border: 1px solid #E2E6E3; border-radius: 16px; overflow: hidden;">
+      <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; height: 34px; padding: 0 12px; background: #F7F8F7; border-bottom: 1px solid #E2E6E3; font-size: 12px; line-height: 16px; font-weight: 600; color: #56615C;">
+        <span>ETA</span>
+        <span>바이어</span>
+        <span style="text-align: right;">바이어가</span>
+        <span style="text-align: right;">산지가</span>
+      </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">12월 1일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 A</span>
+            
+              <span style="padding: 0 5px; border-radius: 5px; background: #FCF1E3; color: #A15C07; font-size: 11px; line-height: 18px; font-weight: 700;">미정</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$14.20</span>
+          <span style="text-align: right; color: #3F4A45;">₩16,000</span>
+        </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">11월 12일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 E</span>
+            
+              <span style="padding: 0 5px; border-radius: 5px; background: #FCF1E3; color: #A15C07; font-size: 11px; line-height: 18px; font-weight: 700;">미정</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$14.00</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,800</span>
+        </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">11월 3일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 A</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$13.80</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,500</span>
+        </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">10월 27일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 C</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$13.60</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,500</span>
+        </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">10월 27일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 A</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$13.80</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,500</span>
+        </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">10월 23일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 B</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$13.50</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,500</span>
+        </div>
+      
+        
+          <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #F7F8F7; font-size: 12px; line-height: 16px; font-weight: 700; color: #56615C;">
+            <span>오늘 10월 13일</span>
+            <span style="flex: 1; border-top: 1px dashed #B3BCB7;"></span>
+            <span style="font-weight: 500;">아래는 나간 건</span>
+          </div>
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">10월 6일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 A</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$13.50</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,000</span>
+        </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">9월 22일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 B</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$13.20</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,000</span>
+        </div>
+      
+        
+        <div style="display: grid; grid-template-columns: 74px minmax(0, 1fr) 62px 70px; column-gap: 8px; align-items: center; min-height: 44px; padding: 0 12px; border-bottom: 1px solid #EEF1EF; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+          <span style="font-weight: 600; white-space: nowrap;">9월 8일</span>
+          <span style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+            <span style="white-space: nowrap;">바이어 C</span>
+            
+          </span>
+          <span style="text-align: right; font-weight: 700;">$13.20</span>
+          <span style="text-align: right; color: #3F4A45;">₩15,000</span>
+        </div>
+      
+    </section>
+  </div>
+
+  <nav aria-label="메뉴" style="position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 6px 8px 22px; background: #FFFFFF; border-top: 1px solid #E2E6E3;">
+    <a href="Main.dc.html" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #56615C; font-size: 12px; line-height: 16px; font-weight: 600; text-decoration: none;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+      <span>스케줄</span>
+    </a>
+    <a href="Supply.dc.html" style="position: relative; height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #56615C; font-size: 12px; line-height: 16px; font-weight: 600; text-decoration: none;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"></path><path d="M12 12c0-4.4 3.2-7.5 8-7.5 0 4.8-3.2 7.5-8 7.5z"></path><path d="M12 14c0-3.6-2.6-6-6.5-6 0 3.8 2.6 6 6.5 6z"></path></svg>
+      <span>산지 정보</span>
+      <span style="position: absolute; top: 2px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; box-sizing: border-box; padding: 0 5px; border-radius: 9px; background: #C2410C; color: #FFFFFF; font-size: 11px; line-height: 18px; font-weight: 700; text-align: center;">1</span>
+    </a>
+    <a href="Price.dc.html" aria-current="page" style="height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #1F6B4F; font-size: 12px; line-height: 16px; font-weight: 700; text-decoration: none;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"></path><path d="M5 16l4.5-4.5 3.5 3 6-7"></path></svg>
+      <span>단가</span>
+    </a>
+  </nav>
+</div>
+</div>
+</body>
+</html>
