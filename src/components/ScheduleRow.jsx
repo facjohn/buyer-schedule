@@ -2,6 +2,7 @@
 import { fmtKo } from '../lib/dates.js';
 import { fmtPrice, fmtWon } from '../lib/money.js';
 import { useLongPress } from '../hooks/useLongPress.js';
+import { shortNo } from '../lib/schedule.js';
 import { IconLock } from './icons.jsx';
 
 export function TableHead() {
@@ -24,7 +25,9 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
   return (
     <div className="srow" role="button" tabIndex={0}
       aria-label={`No. ${row.no || ''} ${row.fruit} ${row.specKo} ${fmtKo(row.eta)}`} {...press}>
-      <div className="srow-no num">{row.no || ''}</div>
+      <div className={'srow-no num' + (shortNo(row.no).length > 3 ? ' long' : '')} title={String(row.no ?? '')}>
+        {shortNo(row.no)}
+      </div>
       <div className="srow-top">
         <span className="fruit">{row.fruit || '과일 없음'}</span>
         {row.ship && <span className="ship-chip">{row.ship}</span>}

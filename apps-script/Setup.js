@@ -114,7 +114,7 @@ function setupSchedule_(sh) {
   colRange_(sh, map, 'price').setNumberFormat('#,##0.00');
   colRange_(sh, map, 'cost').setNumberFormat('"₩"#,##0');
   colRange_(sh, map, 'workCost').setNumberFormat('"₩"#,##0');
-  colRange_(sh, map, 'no').setNumberFormat('0');
+  colRange_(sh, map, 'no').setNumberFormat('@'); // 인보이스 번호(KINGO-26-01, 01)를 글자 그대로
   colRange_(sh, map, 'noYear').setNumberFormat('0');
   colRange_(sh, map, 'updatedAt').setNumberFormat('yy"년" m"월" d"일" hh:mm');
   colRange_(sh, map, 'deleted').insertCheckboxes();

@@ -94,6 +94,12 @@ export function back(fallback = '/') {
   }
 }
 
+/** 사람이 뒤로 가기를 할 때(밀어서 뒤로): 입력 중이면 먼저 확인한다 */
+export function userBack(fallback = '/') {
+  if (guard && !guard()) return;
+  back(fallback);
+}
+
 export function buyerPath(name) {
   return '/b/' + encodeURIComponent(name);
 }

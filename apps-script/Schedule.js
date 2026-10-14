@@ -2,9 +2,12 @@
  * 스케줄 읽기·저장·삭제 표시와 id·No. 붙이기.
  *
  * No. 규칙 (CLAUDE.md 절대 규칙 5)
- * - 선적(컨테이너나 항공 건) 하나에 하나. 같은 컨테이너의 사이즈·과일은 같은 No.의 줄 여러 개.
- * - 바이어별로, 번호를 센 해(noYear = 처음 붙일 때의 ETA 해)마다 지운 건 포함 최댓값 + 1.
- * - 한 번 붙은 No.와 noYear는 ETA가 해를 넘어가도 그대로. 바이어를 바꾼 줄만 새 No.
+ * - No.는 인보이스 번호(예: KINGO-26-01 = 바이어-시즌-차수). 선적(컨테이너나 항공 건) 하나에 하나이고,
+ *   같은 컨테이너의 사이즈·과일은 같은 No.의 줄 여러 개.
+ * - 사람이 직접 쓸 수 있다. 비워 두면 그 바이어의 마지막 번호 다음 차수(KINGO-26-02, 자릿수 유지).
+ *   '마지막'은 앞글자가 가장 뒤(시즌이 큰)인 번호 중 가장 큰 차수. 지운 줄도 센다.
+ * - 숫자만 쓰는 옛 번호(1, 2, 3)는 바이어·번호 해(noYear)마다 최댓값 + 1.
+ * - 바이어를 바꾼 줄은 그 바이어의 다음 번호(직접 쓰면 그 번호).
  */
 
 var SAVE_FIELDS = ['buyer', 'fruit', 'ship', 'specKo', 'specEn', 'eta', 'price', 'cost', 'workCost',
@@ -45,7 +48,8 @@ function list_(member) {
     buyers: buyers,
     fruits: fruits,
     specs: specs,
-    noMax: noMaxTable_(t.rows),
+    noMax: numbering_(t.rows).legacy, // 숫자만 쓰는 옛 번호: '바이어|해' → 최댓값
+    noNext: peekNext_(numbering_(t.rows)), // 인보이스 번호: 바이어 → 다음 번호(예: KINGO-26-02)
     sheetUrl: SpreadsheetApp.getActive().getUrl()
   };
 }
@@ -58,7 +62,7 @@ function rowOut_(r, buyerMap, specMap) {
   return {
     id: str_(r.id),
     buyer: buyer,
-    no: toNum_(r.no),
+    no: r.no === '' || r.no === null ? null : (typeof r.no === 'number' ? r.no : str_(r.no)),
     noYear: toNum_(r.noYear),
     fruit: fruit,
     ship: normShip_(r.ship) || str_(r.ship),
@@ -139,23 +143,126 @@ function specMap_(specs) {
   return map;
 }
 
-/** 바이어·해별 No. 최댓값. 지운 줄도 센다(지운 번호를 다시 쓰지 않게). */
-function noMaxTable_(rows) {
-  var max = {};
-  rows.forEach(function (r) {
-    var buyer = str_(r.buyer);
-    var no = toNum_(r.no);
-    if (!buyer || !no) return;
-    var k = buyer + '|' + (toNum_(r.noYear) || yearOf_(r.eta));
-    if (!max[k] || no > max[k]) max[k] = no;
-  });
-  return max;
+// ── No.(인보이스 번호) ────────────────────────────
+
+/** No. 칸 값을 글자로. 숫자 1 → '1', 빈 칸 → '' */
+function noStr_(v) {
+  if (v === null || v === undefined || v === false) return '';
+  if (typeof v === 'number') return isFinite(v) ? String(v) : '';
+  return String(v).trim();
 }
 
-function nextNo_(max, buyer, year) {
+/** 시트에 쓸 값. 0으로 시작하지 않는 숫자만 숫자로, 나머지는 글자 그대로 */
+function noCell_(s) {
+  return /^[1-9]\d{0,8}$/.test(s) ? Number(s) : s;
+}
+
+/** 'KINGO-26-01' → { prefix: 'KINGO-26-', num: 1, width: 2 }. 끝이 숫자가 아니면 null */
+function parseNo_(s) {
+  var m = /^(.*?)(\d+)$/.exec(s);
+  return m ? { prefix: m[1], num: Number(m[2]), width: m[2].length } : null;
+}
+
+/** 앞글자 비교. 안의 숫자는 숫자로 비교한다(KINGO-27- > KINGO-26-) */
+function cmpPrefix_(a, b) {
+  var ta = a.match(/\d+|\D+/g) || [];
+  var tb = b.match(/\d+|\D+/g) || [];
+  for (var i = 0; i < Math.max(ta.length, tb.length); i++) {
+    var x = ta[i], y = tb[i];
+    if (x === undefined) return -1;
+    if (y === undefined) return 1;
+    if (/^\d/.test(x) && /^\d/.test(y) && Number(x) !== Number(y)) return Number(x) - Number(y);
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+/**
+ * 바이어별 다음 번호를 셀 준비(지운 줄도 센다).
+ * series: 앞글자가 있는 번호의 바이어별 '가장 뒤 앞글자 + 가장 큰 차수', legacy: 숫자 번호의 '바이어|해' 최댓값
+ */
+function numbering_(rows) {
+  var series = {};
+  var legacy = {};
+  rows.forEach(function (r) {
+    var buyer = str_(r.buyer);
+    var no = noStr_(r.no);
+    if (!buyer || !no) return;
+    var p = parseNo_(no);
+    if (p && p.prefix) {
+      var cur = series[buyer];
+      var c = cur ? cmpPrefix_(p.prefix, cur.prefix) : 1;
+      if (c > 0) {
+        series[buyer] = { prefix: p.prefix, num: p.num, width: p.width };
+      } else if (c === 0) {
+        if (p.num > cur.num) cur.num = p.num;
+        if (p.width > cur.width) cur.width = p.width;
+      }
+    } else if (/^\d+$/.test(no)) {
+      var k = buyer + '|' + (toNum_(r.noYear) || yearOf_(r.eta));
+      if (!legacy[k] || Number(no) > legacy[k]) legacy[k] = Number(no);
+    }
+  });
+  return { series: series, legacy: legacy };
+}
+
+function pad_(n, width) {
+  var t = String(n);
+  while (t.length < width) t = '0' + t;
+  return t;
+}
+
+/** 다음 번호를 정하고 셈을 하나 올린다. 인보이스 번호가 있는 바이어는 다음 차수, 없으면 그 해 숫자 최댓값 + 1 */
+function nextNo_(state, buyer, year) {
+  var s = state.series[buyer];
+  if (s) {
+    s.num += 1;
+    return s.prefix + pad_(s.num, s.width);
+  }
   var k = buyer + '|' + year;
-  max[k] = (max[k] || 0) + 1;
-  return max[k];
+  state.legacy[k] = (state.legacy[k] || 0) + 1;
+  return state.legacy[k];
+}
+
+/** 앱 입력 화면에 미리 채울 다음 인보이스 번호(셈은 올리지 않음) */
+function peekNext_(state) {
+  var out = {};
+  Object.keys(state.series).forEach(function (b) {
+    var s = state.series[b];
+    out[b] = s.prefix + pad_(s.num + 1, s.width);
+  });
+  return out;
+}
+
+/** 남은(지우지 않은) 선적들: '바이어|번호|해' 와 '바이어|번호' → 해 */
+function containerIndex_(rows) {
+  var nb = { keys: {}, years: {} };
+  rows.forEach(function (r) {
+    if (toBool_(r.deleted)) return;
+    addContainer_(nb, str_(r.buyer), noStr_(r.no), toNum_(r.noYear) || yearOf_(r.eta));
+  });
+  return nb;
+}
+
+function addContainer_(nb, buyer, no, noYear) {
+  if (!buyer || !no) return;
+  nb.keys[containerKey_(buyer, no, noYear)] = true;
+  var k = buyer + '|' + no;
+  if (!nb.years[k] || noYear > nb.years[k]) nb.years[k] = noYear;
+}
+
+/** 그 바이어에 그 번호의 선적이 있으면 {no, noYear} (같은 번호가 여러 해면 가장 최근 해) */
+function findContainer_(nb, buyer, no) {
+  var y = nb.years[buyer + '|' + no];
+  return y ? { no: no, noYear: y } : null;
+}
+
+/** 사람이 쓴 번호 확인 */
+function cleanNo_(v) {
+  var s = noStr_(v);
+  if (!s) return '';
+  if (s.length > 40 || s.indexOf('|') >= 0) throw new Error('No.가 너무 길거나 쓸 수 없는 글자(|)가 있어요: ' + s);
+  return s;
 }
 
 // ── id·No. 정리 (시트에서 복사해 붙인 줄) ─────────────
@@ -172,7 +279,7 @@ var SHEET_EDIT_WAIT_MS = 5 * 60 * 1000;
  *   No.나 번호 해가 빈 채 최근에 고친 줄은 시트에서 붙여 넣고 고치는 중인 줄이다.
  */
 function findRepairs_(rows, makeId, force) {
-  var max = noMaxTable_(rows);
+  var state = numbering_(rows);
   var seen = {};
   var fixes = [];
   var now = new Date().getTime();
@@ -187,7 +294,7 @@ function findRepairs_(rows, makeId, force) {
       seen[id] = true;
     }
     var buyer = str_(r.buyer);
-    var no = toNum_(r.no);
+    var no = noStr_(r.no);
     var justEdited = isDate_(r.updatedAt) && now - r.updatedAt.getTime() < SHEET_EDIT_WAIT_MS;
     if (justEdited && !force) {
       if (changed) fixes.push(fix);
@@ -199,7 +306,7 @@ function findRepairs_(rows, makeId, force) {
     }
     if (buyer && !no) {
       fix.noYear = yearOf_(r.eta);
-      fix.no = nextNo_(max, buyer, fix.noYear);
+      fix.no = nextNo_(state, buyer, fix.noYear);
       changed = true;
     }
     if (changed) fixes.push(fix);
@@ -226,9 +333,11 @@ function repairIfNeeded_(force) {
 // ── save ─────────────────────────────────────────────
 
 /**
- * items: [{ id?, key?, join?: {no, noYear}, changes: {필드: 값} }]
+ * items: [{ id?, key?, no?, join?: {no, noYear}, changes: {필드: 값} }]
  * - id가 있으면 그 줄의 바뀐 칸만 쓴다.
- * - id가 없으면 새 줄. join이 있으면 그 컨테이너(같은 바이어의 기존 No.)에, 없으면 새 No.
+ * - id가 없으면 새 줄. No.는 join(고른 선적) → no(사람이 쓴 번호, 이미 있는 번호면 그 선적에 더함) → 다음 번호 순.
+ * - 고치기에서 no를 다른 번호로 보내면: 그 번호의 선적이 있으면 이 줄만 그리로 옮기고,
+ *   없으면 이 선적(같은 No.의 줄 모두)의 번호를 바꾼다(인보이스 번호 고치기).
  */
 function save_(member, items) {
   if (!Array.isArray(items) || !items.length) return { ok: false, error: 'bad_request', message: '저장할 줄이 없어요.' };
@@ -248,14 +357,13 @@ function save_(member, items) {
       if (!dict[k]) dict[k] = s;
     });
     var byId = {};
-    var containers = {};
     t.rows.forEach(function (r) {
       var id = str_(r.id);
       if (id && !byId[id]) byId[id] = r;
-      // 번호 해가 빈 줄(시트에서 No.만 적은 줄)은 noMaxTable_처럼 ETA의 해로 본다
-      if (!toBool_(r.deleted)) containers[containerKey_(r.buyer, r.no, toNum_(r.noYear) || yearOf_(r.eta))] = true;
     });
-    var max = noMaxTable_(t.rows);
+    var nb = containerIndex_(t.rows);
+    nb.state = numbering_(t.rows);
+    nb.table = t;
     var now = new Date();
     var appends = [];
     var specAdds = [];
@@ -267,7 +375,9 @@ function save_(member, items) {
       if (item.id || !isSaveKey_(item.key)) return item;
       var made = cache.get('sv:' + item.key);
       var row = made ? byId[made] : null;
-      return row && !toBool_(row.deleted) ? { id: made, key: item.key, join: item.join, changes: item.changes } : item;
+      return row && !toBool_(row.deleted)
+        ? { id: made, key: item.key, join: item.join, no: item.no, changes: item.changes }
+        : item;
     });
 
     // 먼저 모두 확인하고 나서 쓴다. 중간에 틀린 줄이 있으면 아무것도 쓰지 않는다.
@@ -278,17 +388,18 @@ function save_(member, items) {
         throw new Error('다른 사람이 이 줄을 지웠어요. 목록으로 돌아가 확인해 주세요.');
       }
       if (!cur && !changes.buyer) throw new Error('바이어를 골라 주세요.');
-      if (item.join) checkJoin_(item.join, changes.buyer ? changes.buyer.value : str_(cur.buyer), containers);
-      return { item: item, cur: cur, changes: changes };
+      var buyer = changes.buyer ? changes.buyer.value : str_(cur.buyer);
+      if (item.join) checkJoin_(item.join, buyer, nb);
+      return { item: item, cur: cur, changes: changes, no: cleanNo_(item.no) };
     });
 
     checked.forEach(function (c) {
       var item = c.item, cur = c.cur, changes = c.changes;
       var result;
       if (cur) {
-        result = updateRow_(t, cur, changes, item.join, max, containers, member, now);
+        result = updateRow_(cur, changes, item.join, c.no, nb, member, now);
       } else {
-        result = newRow_(changes, item.join, max, containers, member, now);
+        result = newRow_(changes, item.join, c.no, nb, member, now);
         appends.push(result.row);
         byId[result.id] = result.row;
         if (isSaveKey_(item.key)) cache.put('sv:' + item.key, result.id, 1800);
@@ -317,7 +428,16 @@ function save_(member, items) {
   });
 }
 
-function updateRow_(t, cur, changes, join, max, containers, member, now) {
+/** 새 번호 정하기: 고른 선적(join) → 사람이 쓴 번호(있는 선적이면 그리로) → 다음 번호 */
+function pickNo_(buyer, eta, join, typed, nb) {
+  if (join) return checkJoin_(join, buyer, nb);
+  if (typed) return findContainer_(nb, buyer, typed) || { no: typed, noYear: yearOf_(eta) };
+  var noYear = yearOf_(eta);
+  return { no: noStr_(nextNo_(nb.state, buyer, noYear)), noYear: noYear };
+}
+
+function updateRow_(cur, changes, join, typed, nb, member, now) {
+  var t = nb.table;
   var writes = {};
   Object.keys(changes).forEach(function (f) {
     if (changes[f].key !== cellKey_(f, cur[f])) writes[f] = changes[f].value;
@@ -326,23 +446,41 @@ function updateRow_(t, cur, changes, join, max, containers, member, now) {
   var curBuyer = str_(cur.buyer);
   var buyer = writes.buyer !== undefined ? str_(writes.buyer) : curBuyer;
   var eta = writes.eta !== undefined ? writes.eta : cur.eta;
-  var no = toNum_(cur.no);
+  var curNo = noStr_(cur.no);
+  var curYear = toNum_(cur.noYear) || (curNo ? yearOf_(cur.eta) : null);
+  var no = curNo;
   var noYear = toNum_(cur.noYear);
+  var others = 0;
 
-  if (join) {
-    var j = checkJoin_(join, buyer, containers);
-    if (j.no !== no || j.noYear !== noYear) {
-      writes.no = no = j.no;
-      writes.noYear = noYear = j.noYear;
+  if (join || (buyer && buyer !== curBuyer)) {
+    // 다른 선적으로 옮기기 / 바이어를 바꾸면 그 바이어의 번호(쓴 번호, 없으면 다음 번호)
+    var p = pickNo_(buyer, eta, join, typed, nb);
+    no = p.no;
+    noYear = p.noYear;
+  } else if (typed && typed !== curNo) {
+    var there = findContainer_(nb, buyer, typed);
+    if (there) {
+      // 이미 있는 번호: 이 줄만 그 선적으로
+      no = there.no;
+      noYear = there.noYear;
+    } else {
+      // 없는 번호: 이 선적(같은 번호·같은 해의 줄 모두)의 번호를 바꾼다
+      no = typed;
+      noYear = curYear;
+      t.rows.forEach(function (r) {
+        if (r === cur || toBool_(r.deleted) || str_(r.buyer) !== curBuyer || noStr_(r.no) !== curNo) return;
+        if ((toNum_(r.noYear) || yearOf_(r.eta)) !== curYear) return;
+        writeCell_(t, r._row, 'no', noCell_(typed));
+        writeCell_(t, r._row, 'updatedBy', member.name);
+        writeCell_(t, r._row, 'updatedAt', now);
+        others++;
+      });
     }
-  } else if (buyer && buyer !== curBuyer) {
-    noYear = yearOf_(eta);
-    no = nextNo_(max, buyer, noYear);
-    writes.no = no;
-    writes.noYear = noYear;
   }
+  if (no !== curNo) writes.no = noCell_(no);
+  if (no && noYear !== toNum_(cur.noYear)) writes.noYear = noYear;
   // No.가 빈 줄(시트에서 붙여 넣는 중)은 여기서 붙이지 않고 findRepairs_에 맡긴다(ETA를 고치는 중일 수 있어서)
-  if (buyer && no) containers[containerKey_(buyer, no, noYear || yearOf_(eta))] = true;
+  if (buyer && no) addContainer_(nb, buyer, no, noYear || yearOf_(eta));
 
   var fields = Object.keys(writes);
   if (fields.length) {
@@ -352,7 +490,7 @@ function updateRow_(t, cur, changes, join, max, containers, member, now) {
   }
 
   return {
-    id: str_(cur.id), no: no, noYear: noYear, changed: fields.length,
+    id: str_(cur.id), no: no ? noCell_(no) : null, noYear: noYear, changed: fields.length + others,
     final: {
       fruit: str_(writes.fruit !== undefined ? writes.fruit : cur.fruit),
       specKo: str_(writes.specKo !== undefined ? writes.specKo : cur.specKo),
@@ -361,32 +499,24 @@ function updateRow_(t, cur, changes, join, max, containers, member, now) {
   };
 }
 
-function newRow_(changes, join, max, containers, member, now) {
+function newRow_(changes, join, typed, nb, member, now) {
   var row = {};
   Object.keys(changes).forEach(function (f) { row[f] = changes[f].value; });
   var buyer = str_(row.buyer);
   if (!buyer) throw new Error('바이어를 골라 주세요.');
   if (!row.status) row.status = '미정';
 
-  var no, noYear;
-  if (join) {
-    var j = checkJoin_(join, buyer, containers);
-    no = j.no;
-    noYear = j.noYear;
-  } else {
-    noYear = yearOf_(row.eta);
-    no = nextNo_(max, buyer, noYear);
-  }
-  containers[containerKey_(buyer, no, noYear)] = true;
+  var p = pickNo_(buyer, row.eta, join, typed, nb);
+  addContainer_(nb, buyer, p.no, p.noYear);
 
   row.id = newId_();
-  row.no = no;
-  row.noYear = noYear;
+  row.no = noCell_(p.no);
+  row.noYear = p.noYear;
   row.updatedBy = member.name;
   row.updatedAt = now;
   row.deleted = false;
   return {
-    row: row, id: row.id, no: no, noYear: noYear, changed: Object.keys(changes).length,
+    row: row, id: row.id, no: row.no, noYear: p.noYear, changed: Object.keys(changes).length,
     final: { fruit: str_(row.fruit), specKo: str_(row.specKo), specEn: str_(row.specEn) }
   };
 }
@@ -397,14 +527,14 @@ function isSaveKey_(key) {
 }
 
 function containerKey_(buyer, no, noYear) {
-  return str_(buyer) + '|' + toNum_(no) + '|' + toNum_(noYear);
+  return str_(buyer) + '|' + noStr_(no) + '|' + toNum_(noYear);
 }
 
-/** 같은 컨테이너에 더할 때: 그 바이어에 그 No.가 실제로 있어야 한다. */
-function checkJoin_(join, buyer, containers) {
-  var no = toNum_(join.no);
+/** 고른 선적에 더할 때: 그 바이어에 그 No.가 실제로 있어야 한다. */
+function checkJoin_(join, buyer, nb) {
+  var no = noStr_(join.no);
   var noYear = toNum_(join.noYear);
-  if (!no || !noYear || !containers[containerKey_(buyer, no, noYear)]) {
+  if (!no || !noYear || !nb.keys[containerKey_(buyer, no, noYear)]) {
     throw new Error(buyer + '에 No. ' + (no || '?') + ' 선적이 없어요(지워졌을 수 있어요). 목록으로 돌아가 다시 골라 주세요.');
   }
   return { no: no, noYear: noYear };

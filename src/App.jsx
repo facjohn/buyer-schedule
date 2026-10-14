@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { call, AuthError } from './api.js';
 import { clearCode, saveCode, takeCodeFromUrl, CODE_EVENT } from './lib/link.js';
-import { useRoute, replace } from './router.js';
+import { useRoute, replace, userBack } from './router.js';
+import { useSwipeBack, isIosStandalone } from './hooks/useSwipeBack.js';
 import { useScheduleData, clearCache } from './hooks/useScheduleData.js';
 import { Toast } from './components/Sheet.jsx';
 import CodeEntry from './screens/CodeEntry.jsx';
@@ -73,6 +74,9 @@ export default function App() {
   }, [code, refresh, showToast, onAuthFail]);
 
   const saveLost = useCallback((message) => showToast('저장하지 못했어요 · ' + message), [showToast]);
+
+  // 홈 화면 앱에서 오른쪽으로 밀면 뒤로(홈에서는 갈 곳이 없어 끔)
+  useSwipeBack(isIosStandalone() && !!code && route.segs.length > 0, () => userBack('/'));
 
   useEffect(() => {
     if (!code) clearCache();

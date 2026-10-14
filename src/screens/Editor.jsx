@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
-import { containersOf, expectedNo, lastCost, lastPrice, noYearOf, originsOf, specEnOf } from '../lib/schedule.js';
+import { containersOf, lastCost, lastPrice, originsOf, specEnOf, suggestNo } from '../lib/schedule.js';
 import { back, buyerPath, replace, setLeaveGuard } from '../router.js';
 import { Chip, DateField, Field, MoneyField, Segmented, SelectField, TextField } from '../components/Controls.jsx';
 import { IconAlert, IconClose, IconTrash } from '../components/icons.jsx';
@@ -13,7 +13,7 @@ import { IconAlert, IconClose, IconTrash } from '../components/icons.jsx';
 // 회사 칸은 화면에 없다(바이어 탭 기본 회사를 따름, 바꿀 땐 시트에서). 수량·메모도 시트에서만 다루고 앱은 건드리지 않는다.
 const PLAIN_FIELDS = ['buyer', 'fruit', 'ship', 'origin', 'specKo', 'eta', 'loadDate', 'status'];
 const MONEY_FIELDS = ['price', 'cost', 'workCost'];
-const ALL_FIELDS = [...PLAIN_FIELDS, 'specEn', 'exporter', ...MONEY_FIELDS];
+const ALL_FIELDS = [...PLAIN_FIELDS, 'no', 'specEn', 'exporter', ...MONEY_FIELDS];
 const SHIPS = ['20ft', '40ft', '항공'];
 
 function formFromRow(row) {
@@ -30,7 +30,8 @@ function formFromRow(row) {
     workCost: moneyInput(row.workCost, 0),
     status: row.status === '확정' ? '확정' : '미정',
     exporter: row.exporter || '',
-    origin: row.origin || ''
+    origin: row.origin || '',
+    no: row.no === null || row.no === undefined ? '' : String(row.no)
   };
 }
 
@@ -68,10 +69,14 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
   // 화면을 연 순간의 값. 고치기는 이 값과 달라진 칸만 보낸다(그사이 다른 사람이 고친 칸을 덮지 않게).
   const [init] = useState(() => {
-    if (!src) return { ...EMPTY, buyer: presetBuyer || '', exporter: defaultExporter(data, presetBuyer) };
+    const year = Number(data.today.slice(0, 4));
+    if (!src) {
+      return { ...EMPTY, buyer: presetBuyer || '', exporter: defaultExporter(data, presetBuyer),
+        no: suggestNo(data, presetBuyer, year) };
+    }
     const f = formFromRow(src);
-    // 다음 선적: 날짜는 새로 고르고, 산지가는 다시 확인해서 넣게 비운다(규칙 6)
-    return asNext ? { ...f, eta: '', loadDate: '', cost: '', status: '미정' } : f;
+    // 다음 선적: 다음 번호, 날짜는 새로 고르고, 산지가는 다시 확인해서 넣게 비운다(규칙 6)
+    return asNext ? { ...f, no: suggestNo(data, src.buyer, year), eta: '', loadDate: '', cost: '', status: '미정' } : f;
   });
   // 회사 칸에 직접 적힌 줄이었는지(열 때 값). 고치기에서만 그 값을 지킨다.
   const [initExporterSet] = useState(() => mode === 'edit' && !!(src && src.exporterSet));
@@ -84,12 +89,11 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       cost: mode === 'edit',
       specEn: false,
       // 복제는 새 줄이라 바이어를 바꾸면 회사도 새 바이어의 기본 회사로 따라간다
-      exporter: initExporterSet
-    },
-    noChoice: mode === 'dup' && !asNext && src && src.no && noYearOf(src) ? `${noYearOf(src)}|${src.no}` : 'new'
+      exporter: initExporterSet,
+      no: false // No.를 직접 쳤는지(안 쳤으면 바이어·ETA를 바꿀 때 다음 번호로 따라 바뀐다)
+    }
   }));
-  const { form, touched, noChoice } = st;
-  const setNoChoice = (v) => setSt((s) => ({ ...s, noChoice: v }));
+  const { form, touched } = st;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleteArmedAt, setDeleteArmedAt] = useState(0);
@@ -127,7 +131,13 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   const specKnown = !!(form.fruit && form.specKo.trim() && specEnOf(data.specs, form.fruit, form.specKo));
   const containers = form.buyer ? containersOf(data.rows, form.buyer, data.today) : [];
   const etaYear = Number((form.eta || data.today).slice(0, 4));
-  const newNo = form.buyer ? expectedNo(data.noMax, form.buyer, etaYear) : null;
+  const sugg = suggestNo(data, form.buyer, etaYear);
+  const noVal = form.no.trim();
+  const origNo = src && src.no !== null && src.no !== undefined ? String(src.no) : '';
+  // 쓴 번호가 그 바이어의 이미 있는 선적이면 그 선적(같은 컨테이너)
+  const match = noVal ? containers.find((c) => String(c.no) === noVal) : null;
+  const sameShipmentCount = src
+    ? data.rows.filter((r) => r.buyer === src.buyer && String(r.no) === origNo && r.noYear === src.noYear).length : 0;
   const costHint = form.fruit && form.specKo ? lastCost(data.rows, { fruit: form.fruit, specKo: form.specKo.trim() }, src && src.id) : {};
   // 산지 칸 자동완성: 전에 쓴 산지 이름(많이 쓴 순)
   const origins = originsOf(data.rows);
@@ -141,11 +151,12 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       const t = { ...s.touched };
       touch.forEach((k) => { t[k] = true; });
       const next = { ...s.form, ...patch };
-      let nextNo = s.noChoice;
-
-      if ('buyer' in patch) {
-        if (!t.exporter) next.exporter = defaultExporter(data, next.buyer);
-        if (mode === 'new' || (mode === 'dup' && next.buyer !== src.buyer)) nextNo = 'new';
+      if ('buyer' in patch && !t.exporter) next.exporter = defaultExporter(data, next.buyer);
+      // No.를 직접 치지 않았으면 바이어·ETA에 맞춰 다음 번호로(원래 바이어로 돌아오면 원래 번호)
+      if (!t.no && ('buyer' in patch || 'eta' in patch)) {
+        const year = Number((next.eta || data.today).slice(0, 4));
+        const keepOwn = src && next.buyer === src.buyer && (mode === 'edit' || (mode === 'dup' && !asNext));
+        next.no = keepOwn ? origNo : suggestNo(data, next.buyer, year);
       }
       const specChanged = 'fruit' in patch || 'specKo' in patch;
       if (specChanged) {
@@ -168,7 +179,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
           (next.specKo.trim() !== src.specKo || next.fruit !== src.fruit)) {
         next.cost = '';
       }
-      return { form: next, touched: t, noChoice: nextNo };
+      return { form: next, touched: t };
     });
     setError('');
   }
@@ -231,17 +242,29 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       return;
     }
     if (etaBeforeLoad && !window.confirm('ETA가 상차일보다 빨라요. 그래도 저장할까요?')) return;
-    const changes = buildChanges();
-    if (mode === 'edit' && !Object.keys(changes).length) {
-      back(buyerPath(form.buyer));
+    if (noVal.includes('|') || noVal.length > 40) {
+      setError('No.가 너무 길거나 쓸 수 없는 글자(|)가 있어요.');
       return;
     }
+    const changes = buildChanges();
     const item = { key: saveKey, changes };
-    if (mode === 'edit') item.id = src.id;
-    if (mode !== 'edit' && noChoice !== 'new') {
-      const [noYear, no] = noChoice.split('|').map(Number);
-      item.join = { no, noYear };
+    if (mode === 'edit') {
+      item.id = src.id;
+      if (form.buyer !== src.buyer) {
+        if (touched.no && noVal) item.no = noVal; // 안 쳤으면 새 바이어의 다음 번호(창구가)
+      } else if (noVal && noVal !== origNo) {
+        item.no = noVal; // 있는 번호면 이 줄만 그리로, 없는 번호면 이 선적 번호 바꾸기(창구가)
+      }
+      if (!Object.keys(changes).length && !item.no) {
+        back(buyerPath(form.buyer));
+        return;
+      }
+    } else if (match) {
+      item.join = { no: match.no, noYear: match.noYear };
+    } else if (noVal && (touched.no || noVal !== sugg)) {
+      item.no = noVal;
     }
+    // 그 밖(비웠거나 미리 채운 다음 번호 그대로)은 창구가 저장할 때 다음 번호를 붙인다(동시에 저장해도 겹치지 않게)
     setSaving(true);
     const ok = await onSave([item], form.buyer, form.eta, form.fruit);
     if (!alive.current) {
@@ -278,17 +301,30 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   }
 
   const title = mode === 'edit' ? '스케줄 고치기'
-    : mode === 'dup' ? (noChoice === 'new' ? '다음 선적으로 복제' : '같은 컨테이너에 사이즈 추가') : '새 스케줄';
+    : mode === 'dup' ? (match ? '같은 컨테이너에 사이즈 추가' : '다음 선적으로 복제') : '새 스케줄';
   const subtitle = mode === 'edit'
     ? (src.updatedBy ? `마지막 수정 ${src.updatedBy}${src.updatedAt ? ' · ' + fmtKoDateTime(src.updatedAt) : ''}` : '')
-    : mode === 'dup' ? (noChoice === 'new' ? 'ETA와 산지가를 새로 넣어 주세요' : '스펙과 가격만 고쳐 주세요') : '';
+    : mode === 'dup' ? (match ? '스펙과 가격만 고쳐 주세요' : 'ETA와 산지가를 새로 넣어 주세요') : '';
 
-  const noOptions = [
-    { value: 'new', label: newNo ? `${newNo} 새 번호` : '새 번호' },
-    ...containers.map((c) => ({ value: c.value, label: c.label }))
-  ];
-  if (noChoice !== 'new' && !noOptions.some((o) => o.value === noChoice)) {
-    noOptions.push({ value: noChoice, label: `No. ${noChoice.split('|')[1]} (${noChoice.split('|')[0]}년)` });
+  // No. 안내: 쓴 번호가 무엇을 하는지
+  let noHint = '';
+  if (mode === 'edit') {
+    if (form.buyer !== src.buyer) {
+      noHint = match ? `${form.buyer}의 No. ${noVal} 선적으로 옮겨요.`
+        : touched.no && noVal ? `${form.buyer}의 새 번호 ${noVal}(으)로 옮겨요.` : `${form.buyer}의 다음 번호로 옮겨요.`;
+    } else if (noVal && noVal !== origNo) {
+      noHint = match ? `이 줄만 No. ${noVal} 선적으로 옮겨요.`
+        : sameShipmentCount > 1 ? `이 선적의 줄 ${sameShipmentCount}개 번호를 모두 ${noVal}(으)로 바꿔요.`
+          : `번호를 ${noVal}(으)로 바꿔요.`;
+    }
+  } else if (match) {
+    noHint = `No. ${noVal} 선적(${match.label.split(' · ').slice(1).join(' · ')})에 줄을 더해요. 다음 선적이면 다른 번호를 써 주세요.`;
+  } else if (!noVal) {
+    noHint = '비워 두면 다음 번호가 자동으로 붙어요.';
+  } else if (!touched.no && noVal === sugg) {
+    noHint = '다음 번호예요. 인보이스 번호가 다르면 고쳐 써 주세요.';
+  } else {
+    noHint = '새 번호로 새 선적을 만들어요.';
   }
   const buyerOptions = [
     ...(form.buyer ? [] : [{ value: '', label: '바이어 고르기', disabled: true }]),
@@ -330,21 +366,16 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
             <SelectField value={form.buyer} onChange={(v) => update({ buyer: v })} options={buyerOptions} label="바이어" />
           </Field>
           <Field label="No.">
-            {mode === 'edit' ? (
-              <div className="input readonly num">
-                {form.buyer !== src.buyer ? '새 번호' : src.no || '—'}
-              </div>
-            ) : (
-              <SelectField value={noChoice} onChange={setNoChoice} options={noOptions} label="No." />
-            )}
+            <TextField value={form.no} onChange={(v) => update({ no: v }, ['no'])} label="No. (인보이스 번호)"
+              placeholder={sugg || '예: KINGO-26-01'} list="no-list" autoCapitalize="characters"
+              className="input num" />
+            {/* 그 바이어의 기존 번호(같은 컨테이너에 더할 때) */}
+            <datalist id="no-list">
+              {containers.map((c) => <option key={c.value} value={String(c.no)} label={c.label} />)}
+            </datalist>
           </Field>
         </div>
-        {mode === 'edit' && form.buyer !== src.buyer && (
-          <p className="hint">바이어를 바꾸면 그 바이어의 새 번호를 받아요.</p>
-        )}
-        {mode !== 'edit' && noChoice !== 'new' && (
-          <p className="hint">같은 컨테이너(No. {noChoice.split('|')[1]})에 줄을 더해요. 다음 선적이면 No.를 새 번호로 바꿔 주세요.</p>
-        )}
+        {noHint && <p className="hint">{noHint}</p>}
 
         <Field label="과일">
           <div className="chips">

@@ -394,6 +394,77 @@ describe('시트에서 복사해 붙인 줄의 No. (규칙 5)', () => {
   });
 });
 
+describe('인보이스 번호 (규칙 5: KINGO-26-01 = 바이어-시즌-차수)', () => {
+  const base = (eta) => ({ buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', eta: iso(eta || daysFromNow(10)) });
+  const save = (w, item) => w.call({ action: 'save', code: CODE_1, items: [item] });
+
+  it('직접 쓴 번호로 저장하고, 다음 새 줄은 그다음 차수(자릿수 유지)', () => {
+    const w = world();
+    expect(save(w, { no: 'KINGO-26-01', changes: base() }).saved[0].no).toBe('KINGO-26-01');
+    expect(w.call({ action: 'list', code: CODE_1 }).noNext['바이어 A']).toBe('KINGO-26-02');
+    expect(save(w, { changes: base(daysFromNow(20)) }).saved[0].no).toBe('KINGO-26-02');
+    expect(save(w, { changes: base(daysFromNow(30)) }).saved[0].no).toBe('KINGO-26-03');
+  });
+
+  it('시즌이 큰 번호를 쓰면 그다음부터는 그 시즌에서 이어간다', () => {
+    const w = world();
+    save(w, { no: 'KINGO-26-09', changes: base() });
+    save(w, { no: 'KINGO-27-01', changes: base(daysFromNow(40)) });
+    save(w, { no: 'KINGO-26-10', changes: base(daysFromNow(15)) }); // 늦게 넣은 26시즌 건
+    expect(save(w, { changes: base(daysFromNow(50)) }).saved[0].no).toBe('KINGO-27-02');
+  });
+
+  it('이미 있는 번호를 쓰면 그 선적(같은 컨테이너)에 줄을 더한다', () => {
+    const w = world();
+    const first = save(w, { no: 'KINGO-26-01', changes: base() }).saved[0];
+    const second = save(w, { no: 'KINGO-26-01', changes: { ...base(), specKo: '15kg 18-24', specEn: '15kg, 18-24' } }).saved[0];
+    expect(second).toMatchObject({ no: 'KINGO-26-01', noYear: first.noYear });
+    expect(w.call({ action: 'list', code: CODE_1 }).noNext['바이어 A']).toBe('KINGO-26-02');
+  });
+
+  it('고치기에서 없는 번호로 바꾸면 그 선적의 줄 모두 번호가 바뀐다', () => {
+    const w = world();
+    const a = save(w, { no: 'KINGO-26-01', changes: base() }).saved[0];
+    const b = save(w, { no: 'KINGO-26-01', changes: { ...base(), specKo: '15kg 18-24', specEn: '15kg, 18-24' } }).saved[0];
+    const res = w.call({ action: 'save', code: CODE_2, items: [{ id: a.id, no: 'KINGO-26-11', changes: {} }] });
+    expect(res.ok).toBe(true);
+    const rows = w.read('schedule');
+    expect(rows.find((r) => r.id === a.id).no).toBe('KINGO-26-11');
+    expect(rows.find((r) => r.id === b.id).no).toBe('KINGO-26-11');
+    expect(rows.find((r) => r.id === b.id).updatedBy).toBe('박바이어');
+  });
+
+  it('고치기에서 이미 있는 번호로 바꾸면 이 줄만 그 선적으로 옮긴다', () => {
+    const w = world();
+    const a = save(w, { no: 'KINGO-26-01', changes: base() }).saved[0];
+    const b = save(w, { no: 'KINGO-26-01', changes: { ...base(), specKo: '15kg 18-24', specEn: '15kg, 18-24' } }).saved[0];
+    save(w, { no: 'KINGO-26-02', changes: base(daysFromNow(20)) });
+    w.call({ action: 'save', code: CODE_1, items: [{ id: b.id, no: 'KINGO-26-02', changes: {} }] });
+    const rows = w.read('schedule');
+    expect(rows.find((r) => r.id === a.id).no).toBe('KINGO-26-01');
+    expect(rows.find((r) => r.id === b.id).no).toBe('KINGO-26-02');
+  });
+
+  it('바이어를 바꾸며 번호를 쓰면 새 바이어의 그 번호로', () => {
+    const w = world();
+    const res = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a2', no: 'ROYAL-26-07', changes: { buyer: '바이어 B' } }] });
+    expect(res.saved[0].no).toBe('ROYAL-26-07');
+    expect(w.read('schedule').find((r) => r.id === 'a2')).toMatchObject({ buyer: '바이어 B', no: 'ROYAL-26-07' });
+  });
+
+  it('번호가 너무 길거나 | 가 있으면 저장하지 않는다', () => {
+    const w = world();
+    expect(save(w, { no: 'A|B', changes: base() }).ok).toBe(false);
+    expect(save(w, { no: 'X'.repeat(41), changes: base() }).ok).toBe(false);
+  });
+
+  it('숫자 번호만 쓰던 바이어는 지금처럼 해마다 최댓값 + 1', () => {
+    const w = world();
+    expect(save(w, { changes: { ...base(), buyer: '바이어 B' } }).saved[0].no).toBe(1);
+    expect(w.call({ action: 'list', code: CODE_1 }).noNext['바이어 B']).toBeUndefined();
+  });
+});
+
 describe('remove', () => {
   it('행을 지우지 않고 삭제 칸에 표시만 한다 (규칙 4)', () => {
     const w = world();

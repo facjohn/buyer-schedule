@@ -107,9 +107,26 @@ export function buyerCards(data) {
   });
 }
 
-/** 새 번호 예상값(확정은 저장할 때 창구가). 지운 번호까지 센 최댓값 + 1 */
+/** 숫자만 쓰는 옛 번호의 예상값: 그 바이어·해의 최댓값(지운 번호 포함) + 1 */
 export function expectedNo(noMax, buyer, year) {
   return ((noMax || {})[`${buyer}|${year}`] || 0) + 1;
+}
+
+/**
+ * 새 스케줄에 미리 채울 No. 인보이스 번호를 쓰는 바이어는 마지막 번호 다음 차수(KINGO-26-02),
+ * 아니면 숫자 예상값. 확정은 저장할 때 창구가 한다.
+ */
+export function suggestNo(data, buyer, year) {
+  if (!buyer) return '';
+  const next = data.noNext && data.noNext[buyer];
+  return next || String(expectedNo(data.noMax, buyer, year));
+}
+
+/** 목록의 좁은 No. 칸용: 'KINGO-26-01' → '26-01' (맨 앞 바이어 글자는 바이어 화면이라 뺀다) */
+export function shortNo(no) {
+  const s = String(no ?? '');
+  const parts = s.split('-');
+  return parts.length > 1 && /^[^\d]+$/.test(parts[0]) ? parts.slice(1).join('-') : s;
 }
 
 /** 같은 컨테이너에 더할 때 고르는 그 바이어의 선적들. 앞으로의 것이 먼저 */
