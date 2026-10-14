@@ -1,10 +1,11 @@
-// ① 홈: 바이어 목록(다음 ETA 가까운 순)과 검색.
+// ① 홈: 바이어 바둑판(두 칸씩, 바이어마다 다른 색, 다음 ETA 가까운 순)과 검색.
 import { useMemo } from 'react';
 import { useRemembered } from '../lib/uiMemory.js';
 import { fmtKo, fmtKoDateTime } from '../lib/dates.js';
 import { buyerCards } from '../lib/schedule.js';
+import { buyerColor } from '../lib/buyerColor.js';
 import { navigate, buyerPath } from '../router.js';
-import { IconChevron, IconPlus, IconSearch, IconSheet } from '../components/icons.jsx';
+import { IconPlus, IconSearch, IconSheet } from '../components/icons.jsx';
 
 export default function Home({ data, fetchedAt, loading }) {
   const [query, setQuery] = useRemembered('home.query', '');
@@ -43,31 +44,39 @@ export default function Home({ data, fetchedAt, loading }) {
 
       <div className="section-title">다음 ETA 가까운 순</div>
 
-      <div className="cards">
-        {shown.map((c) => (
-          <button key={c.buyer.name} type="button" className="card buyer-card" onClick={() => navigate(buyerPath(c.buyer.name))}>
-            <div className="buyer-main">
-              <div className="buyer-name">
-                {c.buyer.name} <span className="buyer-country">{c.buyer.country}</span>
+      <div className="tiles">
+        {shown.map((c) => {
+          const color = buyerColor(data.buyers, c.buyer.name);
+          return (
+            <button key={c.buyer.name} type="button" className="tile"
+              style={{ '--tile-bg': color.bg, '--tile-fg': color.fg }}
+              onClick={() => navigate(buyerPath(c.buyer.name))}>
+              <div className="tile-top">
+                <div className="tile-name">{c.buyer.name}</div>
+                <span className={'tile-count' + (c.shipments ? '' : ' none')}>
+                  <span className="num">{c.shipments}</span>
+                  <span>예정</span>
+                </span>
               </div>
-              <div className="buyer-next">
+              {c.buyer.country && <div className="tile-country">{c.buyer.country}</div>}
+              <div className="tile-next">
                 {c.next ? (
                   <>
-                    ETA <b>{c.next.eta ? fmtKo(c.next.eta) : '미정'}</b> · {c.next.fruits}{c.next.ship ? ` · ${c.next.ship}` : ''}
-                    {c.next.eta && c.nextTbc && <span className="chip-tbc">미정</span>}
+                    <div className="tile-label">
+                      다음 ETA{c.next.eta && c.nextTbc && <span className="chip-tbc">미정</span>}
+                    </div>
+                    <div className="tile-date">{c.next.eta ? fmtKo(c.next.eta) : 'ETA 미정'}</div>
+                    <div className="tile-what">{c.next.fruits}{c.next.ship ? ` · ${c.next.ship}` : ''}</div>
                   </>
-                ) : '앞으로 일정 없음'}
+                ) : (
+                  <div className="tile-label">앞으로 일정 없음</div>
+                )}
               </div>
-            </div>
-            <div className="buyer-count">
-              <span className="num" style={{ color: c.shipments ? 'var(--brand)' : 'var(--muted)' }}>{c.shipments}</span>
-              <span>예정</span>
-            </div>
-            <IconChevron size={20} className="chev" />
-          </button>
-        ))}
+            </button>
+          );
+        })}
         {!shown.length && (
-          <div className="empty-box">
+          <div className="empty-box tiles-empty">
             {data.buyers.length ? '맞는 바이어가 없어요.' : '바이어 탭에 바이어를 먼저 넣어 주세요.'}
           </div>
         )}

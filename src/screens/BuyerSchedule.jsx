@@ -7,7 +7,7 @@ import { navigate, back } from '../router.js';
 import ScheduleRow, { TableHead } from '../components/ScheduleRow.jsx';
 import { ActionSheet } from '../components/Sheet.jsx';
 import { Chip, SelectField } from '../components/Controls.jsx';
-import { IconBack, IconCopy, IconPlus, IconTrash } from '../components/icons.jsx';
+import { IconBack, IconCopy, IconImage, IconPlus, IconTrash } from '../components/icons.jsx';
 
 function periodShows(period, eta, today) {
   if (period === 'past') return eta < today;
@@ -99,8 +99,12 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
         )}
       </div>
 
-      <div className="bottom-bar">
-        <button type="button" className="btn-primary wide"
+      <div className="bottom-bar two-even">
+        <button type="button" className="btn-secondary"
+          onClick={() => navigate('/jpg/' + encodeURIComponent(buyerName))}>
+          <IconImage size={20} /> JPG로 보내기
+        </button>
+        <button type="button" className="btn-primary"
           onClick={() => navigate('/new?buyer=' + encodeURIComponent(buyerName))}>
           <IconPlus size={22} /> 추가
         </button>

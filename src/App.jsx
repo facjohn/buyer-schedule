@@ -9,6 +9,7 @@ import CodeEntry from './screens/CodeEntry.jsx';
 import Home from './screens/Home.jsx';
 import BuyerSchedule from './screens/BuyerSchedule.jsx';
 import Editor from './screens/Editor.jsx';
+import JpgPreview from './screens/JpgPreview.jsx';
 
 const FOCUS_MS = 15000;
 
@@ -117,6 +118,8 @@ export default function App() {
       <BuyerSchedule key={second} data={data} buyerName={second} onRemove={remove}
         focusEta={recent ? ls.eta : null} focusFruit={recent ? ls.fruit : null} />
     );
+  } else if (first === 'jpg' && second) {
+    screen = <JpgPreview key={second} data={data} buyerName={second} />;
   } else if (first === 'new') {
     screen = (
       <Editor key={'new' + (route.params.buyer || '')} data={data} mode="new" presetBuyer={route.params.buyer}
