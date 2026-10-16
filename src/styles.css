@@ -154,6 +154,7 @@ h1, h2, p { margin: 0; }
 .srow-price { text-align: right; font-size: 15px; line-height: 22px; font-weight: 700; }
 .srow-cost { text-align: right; font-size: 14px; line-height: 22px; color: var(--text-2); }
 .srow-price.small, .srow-cost.small { font-size: 13px; }
+.srow-price, .srow-cost { overflow-wrap: anywhere; }
 .srow .work { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; }
 .srow .empty { color: #B7BEBA; font-weight: 400; }
 .srow .fruit { font-size: 16px; line-height: 22px; font-weight: 700; }
@@ -229,7 +230,11 @@ h1, h2, p { margin: 0; }
   background: transparent; color: var(--text-2); font-size: 16px;
 }
 
-.money-input { display: flex; align-items: center; gap: 6px; padding: 0 12px; }
+.money-input { display: flex; align-items: center; gap: 6px; padding: 0 0 0 12px; }
+.money-more {
+  flex-shrink: 0; width: 44px; height: 44px; border: 0; border-left: 1px solid var(--line); background: transparent;
+  color: var(--brand); font-size: 18px; font-weight: 700; border-radius: 0 12px 12px 0;
+}
 .money-symbol { color: var(--muted); font-size: 16px; flex-shrink: 0; }
 .money-input input {
   flex: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; font-size: 16px;

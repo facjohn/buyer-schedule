@@ -131,6 +131,19 @@ describe('list', () => {
     expect(a1.specEn).toBe('5kg, 7 pcs');
   });
 
+  it('사전에도 줄에도 영어가 없으면: 한글 없는 스펙은 적힌 그대로, /로 이은 스펙은 조각마다 사전에서', () => {
+    const w = world();
+    const col = (f) => w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === f);
+    const set = (row, spec) => { w.sheet('schedule').data[row][col('specKo')] = spec; w.sheet('schedule').data[row][col('specEn')] = ''; };
+    set(2, '4kg/450g');
+    const list1 = w.call({ action: 'list', code: CODE_1 }).rows;
+    expect(list1.find((r) => r.id === 'a2').specEn).toBe('4kg/450g');
+    w.sheet('schedule').data[1][col('specKo')] = '5kg 7과/15kg';
+    expect(w.call({ action: 'list', code: CODE_1 }).rows.find((r) => r.id === 'a1').specEn).toBe('5kg, Size 7/15kg');
+    w.sheet('schedule').data[1][col('specKo')] = '5kg 7과/4송이';
+    expect(w.call({ action: 'list', code: CODE_1 }).rows.find((r) => r.id === 'a1').specEn).toBe('');
+  });
+
   it('사전에 없는 스펙은 줄에 적힌 영어를 쓴다', () => {
     const w = world();
     w.sheet('schedule').data[2][w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === 'specEn')] = '10kg';
@@ -257,6 +270,53 @@ describe('save', () => {
     w.call({ action: 'save', code: CODE_2, items: [{ id: 'a1', changes: { price: 14, cost: 16000, workCost: 1900, memo: '바뀜' } }] });
     const row = w.read('schedule').find((r) => r.id === 'a1');
     expect([row.price, row.cost, row.workCost, row.memo]).toEqual([14, 16000, 1900, '바뀜']);
+  });
+
+  it('시트에 가격을 여럿 적으면(17.3/17.8) 적힌 글자 그대로 보낸다', () => {
+    const w = world();
+    const col = (f) => w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === f);
+    const a1 = w.sheet('schedule').data[1];
+    a1[col('price')] = '17.3/17.8';
+    a1[col('cost')] = '23000/22000/21000';
+    a1[col('workCost')] = '₩1,800';
+    const r = w.call({ action: 'list', code: CODE_1 }).rows.find((x) => x.id === 'a1');
+    expect([r.price, r.cost, r.workCost]).toEqual(['17.3/17.8', '23000/22000/21000', 1800]);
+  });
+
+  it("'17 18'처럼 빈칸으로 나눈 두 값을 1718로 읽지 않는다", () => {
+    const w = world();
+    w.sheet('schedule').data[1][w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === 'price')] = '17 18';
+    expect(w.call({ action: 'list', code: CODE_1 }).rows.find((x) => x.id === 'a1').price).toBe('17 18');
+  });
+
+  it('앱에서 가격을 여럿 넣으면 글자 그대로 저장하고, 같은 글자면 다시 쓰지 않는다', () => {
+    const w = world();
+    const res = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { price: '17.3/17.8' } }] });
+    expect(res.ok).toBe(true);
+    expect(w.read('schedule').find((r) => r.id === 'a1').price).toBe('17.3/17.8');
+    expect(w.call({ action: 'list', code: CODE_1 }).rows.find((x) => x.id === 'a1').price).toBe('17.3/17.8');
+
+    const again = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { price: '17.3/17.8' } }] });
+    expect(again.saved[0].changed).toBe(0);
+    const changed = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { price: '17.3/17.9' } }] });
+    expect(changed.saved[0].changed).toBe(1);
+    expect(w.read('schedule').find((r) => r.id === 'a1').price).toBe('17.3/17.9');
+  });
+
+  it('새 줄도 여러 가격을 글자 그대로', () => {
+    const w = world();
+    const res = w.call({ action: 'save', code: CODE_1, items: [{ changes: {
+      buyer: '바이어 B', fruit: '단감', ship: '40ft', specKo: '10kg', eta: iso(daysFromNow(15)), price: '15.2/15.5', cost: '17000/16500'
+    } }] });
+    expect(res.ok).toBe(true);
+    const row = w.read('schedule').find((r) => r.id === res.saved[0].id);
+    expect([row.price, row.cost]).toEqual(['15.2/15.5', '17000/16500']);
+  });
+
+  it('숫자가 없는 금액은 거절한다', () => {
+    const res = world().call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { price: '미정' } }] });
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain('17.3/17.8');
   });
 
   it('금액을 지우면 빈칸이 된다', () => {
@@ -501,6 +561,13 @@ describe('prices', () => {
     expect(res.ok).toBe(true);
     expect(res.rows.map((r) => r.id).sort()).toEqual(['a1', 'old']);
     expect(res.rows.find((r) => r.id === 'old')).toMatchObject({ price: 12.5, cost: 14000, workCost: 1600 });
+  });
+
+  it('단가 흐름 그래프에는 숫자 하나인 가격만(여러 값은 null)', () => {
+    const w = world();
+    w.sheet('schedule').data[1][w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === 'price')] = '17.3/17.8';
+    const res = w.call({ action: 'prices', code: CODE_1, fruit: '신고배' });
+    expect(res.rows.find((r) => r.id === 'a1').price).toBe(null);
   });
 });
 

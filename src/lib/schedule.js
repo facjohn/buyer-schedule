@@ -186,3 +186,22 @@ export function specEnOf(specs, fruit, specKo) {
   const s = (specs || []).find((x) => x.fruitKo === fruit && x.specKo === k && x.specEn);
   return s ? s.specEn : '';
 }
+
+const HANGUL = /[\u3131-\u318E\uAC00-\uD7A3]/;
+
+/**
+ * 사전에 없는 스펙의 영어(서버 derivedSpecEn_과 같은 규칙, 2026-10-16 사용자 요청: 적은 글자 그대로).
+ * 한글이 없는 스펙('4kg/450g')은 그대로, '/'로 이은 스펙은 조각마다 사전에서 찾아 잇는다. 못 찾으면 ''
+ */
+export function derivedSpecEn(specs, fruit, specKo) {
+  const s = String(specKo || '').trim();
+  if (!s) return '';
+  if (!HANGUL.test(s)) return s;
+  const en = [];
+  for (const part of s.split('/').map((p) => p.trim())) {
+    const e = part ? specEnOf(specs, fruit, part) || (HANGUL.test(part) ? '' : part) : '';
+    if (!e) return '';
+    en.push(e);
+  }
+  return en.join('/');
+}

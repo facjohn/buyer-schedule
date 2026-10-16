@@ -17,9 +17,10 @@ function prices_(member, fruit) {
       buyer: str_(r.buyer),
       specKo: str_(r.specKo),
       ship: normShip_(r.ship) || str_(r.ship),
-      price: toNum_(r.price),
-      cost: toNum_(r.cost),
-      workCost: toNum_(r.workCost),
+      // 그래프용 숫자만. 여러 값('17.3/17.8')은 그리지 않는다
+      price: moneyNum_(r.price),
+      cost: moneyNum_(r.cost),
+      workCost: moneyNum_(r.workCost),
       status: str_(r.status) === '확정' ? '확정' : '미정'
     });
   });

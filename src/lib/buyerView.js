@@ -16,9 +16,16 @@ export function toBuyerRow(row, fruitEn, { withPrice = true } = {}) {
     ship: SHIP_EN[row.ship] || '',
     spec: row.specEn || '',
     eta: row.eta || '',
-    price: withPrice && typeof row.price === 'number' ? row.price : null,
+    price: withPrice ? buyerPrice(row.price) : null,
     status: row.status === '확정' ? 'confirmed' : 'tbc'
   };
+}
+
+/** JPG 바이어가: 숫자, 또는 '17.3/17.8'처럼 적힌 글자 그대로. 한글이 든 글자는 영어 사진에 내지 않는다(TBC) */
+export function buyerPrice(p) {
+  if (typeof p === 'number') return isFinite(p) ? p : null;
+  if (typeof p !== 'string' || !p.trim() || /[\u3131-\u318E\uAC00-\uD7A3]/.test(p)) return null;
+  return p.trim();
 }
 
 export function fruitEnMap(fruits) {

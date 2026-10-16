@@ -4,7 +4,7 @@
 import { fmtEn, fmtEnLong } from './dates.js';
 import { fmtPrice } from './money.js';
 import { sortRows } from './schedule.js';
-import { fruitEnMap, toBuyerRow } from './buyerView.js';
+import { buyerPrice, fruitEnMap, toBuyerRow } from './buyerView.js';
 
 export const JPG_WIDTH = 1080;
 export const JPG_MIN_HEIGHT = 1350;
@@ -44,6 +44,9 @@ export function buildJpg(data, buyerName, { exporter = null, showPrice = true } 
   const missing = new Set();
   if (blankCount) missing.add(`회사가 비어 있는 줄 ${blankCount}개(바이어 탭 기본 회사나 스케줄 탭 회사 칸)`);
   for (const r of mine) {
+    if (showPrice && typeof r.price === 'string' && r.price.trim() && buyerPrice(r.price) === null) {
+      missing.add(`바이어가 "${r.price.trim()}"에 한글이 있어 사진에는 TBC로 나가요`);
+    }
     if (!fruitEn[r.fruit]) missing.add(`과일 "${r.fruit}"의 영어(품목 탭)`);
     if (!r.specEn) missing.add(`${r.fruit} "${r.specKo}"의 스펙 영어(스펙 탭)`);
   }
@@ -150,15 +153,23 @@ export function layoutJpg(model, measure) {
   y += 36;
 
   // ── 표 머리 ─────────────────────────────
-  // No.는 인보이스 번호(KINGO-26-01)가 한 줄에 들어가게 넉넉히
-  const col = { no: PX + 20, item: PX + 210, ship: PX + 390, spec: PX + 500, eta: PX + 680, priceR: W - PX - 20 };
+  // No. 칸은 실제 번호 폭에 맞춘다: 6·7처럼 짧으면 Item이 바로 옆에, 인보이스 번호(KINGO-26-01)면 넓게(최대 176px).
+  // 남는 폭은 줄바꿈이 잦은 Item과 Spec에 반씩 준다(2026-10-16 사용자 요청: No.와 Item 사이가 너무 멀다)
+  const hf = font(600, 22);
+  const NO_F = font(700, 24);
+  const noStrOf = (r) => (r.no === null || r.no === undefined ? '' : String(r.no));
+  const noW = Math.ceil(Math.min(176, Math.max(measure('No.', hf), ...model.rows.map((r) => measure(noStrOf(r), NO_F)))));
+  const SHIP_W = 120;
+  const colItem = PX + 20 + noW + 36;
+  const colEta = PX + 680;
+  const half = Math.floor((colEta - colItem - SHIP_W) / 2);
+  const col = { no: PX + 20, item: colItem, ship: colItem + half, spec: colItem + half + SHIP_W, eta: colEta, priceR: W - PX - 20 };
   const width = {
-    no: col.item - col.no - 14,
+    no: noW,
     item: col.ship - col.item - 14,
     spec: col.eta - col.spec - 14
   };
   rect(PX, y, W - PX * 2, 60, C.head, 12);
-  const hf = font(600, 22);
   text(col.no, y + 38, 'No.', hf, C.text2);
   text(col.item, y + 38, 'Item', hf, C.text2);
   text(col.ship, y + 38, 'Shipping', hf, C.text2);
@@ -173,7 +184,6 @@ export function layoutJpg(model, measure) {
   const year = String(h.date || '').slice(0, 4);
 
   const LH = 36;
-  const NO_F = font(700, 24);
   const ITEM_F = font(700, 28);
   const BODY_F = font(400, 28);
   const PRICE_F = font(700, 28);
@@ -182,7 +192,7 @@ export function layoutJpg(model, measure) {
     for (const r of rows) {
       const top = y + 22;
       // 인보이스 번호는 한 줄이 되도록 24px에서 20px까지 줄여 보고, 그래도 길면 하이픈 뒤에서 줄바꿈
-      const noStr = r.no === null ? '' : String(r.no);
+      const noStr = noStrOf(r);
       let noF = NO_F;
       for (let s = 22; s >= 20 && measure(noStr, noF) > width.no; s -= 2) noF = font(700, s);
       const noLines = wrapText(noStr, noF, width.no, measure);

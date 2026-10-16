@@ -1,5 +1,5 @@
 // 버튼·입력 부품. 입력 글자는 16px 이상(아이폰이 확대하지 않게), 누르는 곳은 44px 이상.
-import { useId, useState } from 'react';
+import { useId, useState, useRef } from 'react';
 import { fmtKo } from '../lib/dates.js';
 import { IconCalendar, IconDown } from './icons.jsx';
 
@@ -79,14 +79,26 @@ export function DateField({ value, onChange, placeholder = '날짜 고르기', l
   );
 }
 
-/** 금액 칸. 바이어가는 소수점, 산지가·작업비는 원 단위 */
+/**
+ * 금액 칸. 바이어가는 소수점, 산지가·작업비는 원 단위.
+ * 가격이 여럿이면 17.3/17.8처럼 '/'로 잇는다. 폰 숫자 자판에는 '/'가 없어서 오른쪽 '/' 버튼으로 넣는다.
+ */
 export function MoneyField({ value, onChange, symbol, decimal, placeholder, label }) {
+  const ref = useRef(null);
+  const addSlash = () => {
+    // 누른 그 자리에서 바로 이 칸으로(아이폰은 손가락 누름 안에서 focus해야 자판이 뜬다). 바뀐 글자 뒤에 커서가 간다
+    if (ref.current) ref.current.focus();
+    const v = String(value || '').trim();
+    if (v && !v.endsWith('/')) onChange(v + '/');
+  };
   return (
     <div className="input money-input">
       <span className="money-symbol">{symbol}</span>
-      <input inputMode={decimal ? 'decimal' : 'numeric'} value={value} placeholder={placeholder}
+      <input ref={ref} inputMode={decimal ? 'decimal' : 'numeric'} value={value} placeholder={placeholder}
         aria-label={label} autoComplete="off"
-        onChange={(e) => onChange(e.target.value.replace(decimal ? /[^\d.,]/g : /[^\d,]/g, ''))} />
+        onChange={(e) => onChange(e.target.value.replace(decimal ? /[^\d.,/ ]/g : /[^\d,/ ]/g, ''))} />
+      <button type="button" className="money-more" aria-label={label + ' 가격 하나 더 (/)'}
+        onMouseDown={(e) => e.preventDefault()} onClick={addSlash}>/</button>
     </div>
   );
 }

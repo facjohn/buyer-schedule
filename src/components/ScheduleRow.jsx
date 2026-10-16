@@ -5,6 +5,11 @@ import { useLongPress } from '../hooks/useLongPress.js';
 import { shortNo } from '../lib/schedule.js';
 import { IconLock } from './icons.jsx';
 
+/** 여러 가격('17.3/17.8/18.2')은 좁은 칸에서 '/' 뒤에서 줄이 바뀌게 */
+function breakAtSlash(s) {
+  return s ? s.replace(/\//g, '/\u200B') : s;
+}
+
 export function TableHead() {
   return (
     <div className="srow srow-head">
@@ -45,10 +50,10 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
         )}
       </div>
       <div className={'srow-price num' + (price.length > 8 ? ' small' : '')}>
-        {price || <span className="empty">—</span>}
+        {breakAtSlash(price) || <span className="empty">—</span>}
       </div>
       <div className={'srow-cost num' + (cost.length > 8 ? ' small' : '')}>
-        {cost || <span className="empty">—</span>}
+        {breakAtSlash(cost) || <span className="empty">—</span>}
         {work && <div className="work">작업 {work}</div>}
       </div>
     </div>

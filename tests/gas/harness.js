@@ -66,7 +66,7 @@ export class MockSheet {
     while (this.data.length < r) this.data.push([]);
     const row = this.data[r - 1];
     while (row.length < c) row.push('');
-    row[c - 1] = v;
+    row[c - 1] = typeof v === 'string' && v.startsWith("'") ? v.slice(1) : v; // 시트처럼 '로 시작하면 글자로
     this.cellWrites.push([r, c]);
   }
   deleteRow(r) { this.data.splice(r - 1, 1); }

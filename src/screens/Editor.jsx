@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
-import { containersOf, lastCost, lastPrice, originsOf, specEnOf, suggestNo } from '../lib/schedule.js';
+import { containersOf, derivedSpecEn, lastCost, lastPrice, originsOf, specEnOf, suggestNo } from '../lib/schedule.js';
 import { back, buyerPath, replace, setLeaveGuard } from '../router.js';
 import { Chip, DateField, Field, MoneyField, Segmented, SelectField, TextField } from '../components/Controls.jsx';
 import { IconAlert, IconClose, IconTrash } from '../components/icons.jsx';
@@ -131,7 +131,9 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
   const buyerObj = data.buyers.find((b) => b.name === form.buyer);
   const currency = (buyerObj && buyerObj.currency) || 'USD';
-  const specKnown = !!(form.fruit && form.specKo.trim() && specEnOf(data.specs, form.fruit, form.specKo));
+  const specInDict = !!(form.fruit && form.specKo.trim() && specEnOf(data.specs, form.fruit, form.specKo));
+  // 사전에 없어도 한글이 없는 스펙('4kg/450g')이나 사전 스펙을 '/'로 이은 스펙은 영어가 저절로 정해진다
+  const specKnown = specInDict || !!(form.fruit && derivedSpecEn(data.specs, form.fruit, form.specKo));
   const containers = form.buyer ? containersOf(data.rows, form.buyer, data.today) : [];
   const etaYear = Number((form.eta || data.today).slice(0, 4));
   const sugg = suggestNo(data, form.buyer, etaYear);
@@ -166,7 +168,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       if (specChanged) {
         // 사전에 있는 스펙으로 바뀌면 사전 영어를 쓴다(앞 스펙에 맞춰 친 영어가 다른 스펙의 사전을 덮지 않게).
         // 사전에 없는 스펙이면 직접 친 영어는 그대로 둔다.
-        const dictEn = specEnOf(data.specs, next.fruit, next.specKo);
+        const dictEn = specEnOf(data.specs, next.fruit, next.specKo) || derivedSpecEn(data.specs, next.fruit, next.specKo);
         if (dictEn) {
           next.specEn = dictEn;
           t.specEn = false;
@@ -242,7 +244,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       return;
     }
     if (badMoney) {
-      setError('금액은 숫자만 넣어 주세요.');
+      setError('금액은 숫자나 17.3/17.8처럼 넣어 주세요.');
       return;
     }
     if (etaBeforeLoad && !window.confirm('ETA가 상차일보다 빨라요. 그래도 저장할까요?')) return;
@@ -416,7 +418,9 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
         </div>
         {form.specKo.trim() && form.fruit && (
           <p className="hint">
-            {specKnown ? '한 번 쓴 스펙은 영어가 자동으로 채워져요. 고치면 이 스펙 전체에 반영돼요.' : '처음 쓰는 스펙이에요. 영어를 한 번만 넣어 주세요.'}
+            {specInDict ? '한 번 쓴 스펙은 영어가 자동으로 채워져요. 고치면 이 스펙 전체에 반영돼요.'
+              : specKnown ? '적은 글자 그대로 영어로 나가요. 다르게 쓰려면 고쳐 주세요.'
+                : '처음 쓰는 스펙이에요. 영어를 한 번만 넣어 주세요.'}
           </p>
         )}
 

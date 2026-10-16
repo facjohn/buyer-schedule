@@ -190,6 +190,25 @@ function toNum_(v) {
   return isFinite(n) ? n : null;
 }
 
+/**
+ * 금액 칸의 숫자 하나. '$17.80', '28,000', '28000원'은 숫자로, '17.3/17.8'·'17 18'처럼 여러 값이면 null.
+ * (toNum_은 칸 안의 빈칸·쉼표를 모두 지워 '17 18'을 1718로 읽으므로 금액에는 쓰지 않는다)
+ */
+function moneyNum_(v) {
+  if (typeof v === 'number') return isFinite(v) ? v : null;
+  var s = str_(v).replace(/^[₩$]\s*/, '').replace(/\s*원$/, '');
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, '');
+  return /^\d+(\.\d+)?$/.test(s) ? Number(s) : null;
+}
+
+/** 금액 칸 → 앱: 숫자 하나면 숫자, '17.3/17.8'처럼 여러 값이나 다른 글자면 적힌 글자 그대로, 비었으면 null */
+function moneyOut_(v) {
+  var n = moneyNum_(v);
+  if (n !== null) return n;
+  var s = str_(v);
+  return s === '' ? null : s;
+}
+
 function toBool_(v) {
   if (v === true) return true;
   var s = String(v).trim().toUpperCase();

@@ -166,6 +166,15 @@ describe('JPG 그리기', () => {
     for (const o of ops) expect(measure(o.text, o.font)).toBeLessThanOrEqual(1080 - 112);
   });
 
+  it('여러 가격(17.3/17.8)은 사진에도 글자 그대로, 한글이 든 가격은 TBC와 경고', () => {
+    const multi = { ...data, rows: [{ ...data.rows[1], price: '17.3/17.8' }, { ...data.rows[2], price: '26.5 협의' }] };
+    const j = buildJpg(multi, '킹고');
+    const t = drawnTexts(j.model);
+    expect(t).toContain('17.3/17.8');
+    expect(HANGUL.test(t.join('\n'))).toBe(false);
+    expect(j.warnings.join(' ')).toContain('26.5 협의');
+  });
+
   it('바이어가를 빼면 가격과 가격 줄이 없다', () => {
     const t = drawnTexts(buildJpg(data, '킹고', { showPrice: false }).model).join('\n');
     expect(t).not.toContain('$');
@@ -185,6 +194,19 @@ describe('JPG 그리기', () => {
     const t = drawnTexts(buildJpg(d, '킹고').model);
     expect(t).toContain('Oct 20');
     expect(t).toContain('Jan 5, 2027');
+  });
+
+  it('No.가 짧으면(6·7) Item이 가까이, 인보이스 번호면 넓게', () => {
+    const at = (no) => {
+      const d = { ...data, rows: [{ ...data.rows[1], no }] };
+      const ops = layoutJpg(buildJpg(d, '킹고').model, measure).ops;
+      return { no: ops.find((o) => o.text === 'No.').x, item: ops.find((o) => o.text === 'Item').x, spec: ops.find((o) => o.text === 'Spec').x };
+    };
+    const short = at(6);
+    const long = at('KINGO-26-02');
+    expect(short.item - short.no).toBeLessThan(100);
+    expect(long.item - long.no).toBeGreaterThan(150);
+    expect(short.spec).toBeLessThan(long.spec + 1);
   });
 
   it('줄이 많아도 높이가 줄 수만큼 늘어난다', () => {

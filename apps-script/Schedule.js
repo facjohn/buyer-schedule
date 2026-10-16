@@ -67,11 +67,12 @@ function rowOut_(r, buyerMap, specMap) {
     fruit: fruit,
     ship: normShip_(r.ship) || str_(r.ship),
     specKo: specKo,
-    specEn: specMap[fruit + '|' + specKo] || str_(r.specEn),
+    specEn: specMap[fruit + '|' + specKo] || str_(r.specEn) || derivedSpecEn_(specMap, fruit, specKo),
     eta: toIsoDate_(r.eta),
-    price: toNum_(r.price),
-    cost: toNum_(r.cost),
-    workCost: toNum_(r.workCost),
+    // 가격이 여럿('17.3/17.8')이면 시트에 적힌 글자 그대로 보낸다(2026-10-16 사용자 요청)
+    price: moneyOut_(r.price),
+    cost: moneyOut_(r.cost),
+    workCost: moneyOut_(r.workCost),
     status: str_(r.status) === '확정' ? '확정' : '미정',
     loadDate: toIsoDate_(r.loadDate),
     exporter: str_(r.exporter) || (b ? b.exporter : ''),
@@ -132,6 +133,28 @@ function indexBy_(list, key) {
   var map = {};
   list.forEach(function (o) { if (!map[o[key]]) map[o[key]] = o; });
   return map;
+}
+
+var HANGUL_RE = /[\u3131-\u318E\uAC00-\uD7A3]/;
+
+/**
+ * 사전에도 줄에도 영어가 없을 때의 스펙 영어(2026-10-16 사용자 요청: 적은 글자 그대로).
+ * - 한글이 없는 스펙('4kg/450g', '15kg 18-24')은 적힌 글자 그대로
+ * - '/'로 이은 스펙은 조각마다 사전(한글 없는 조각은 그대로)에서 찾아 '/'로 잇는다. 하나라도 못 찾으면 ''
+ * 번역은 하지 않는다(CLAUDE.md 표기 규칙).
+ */
+function derivedSpecEn_(specMap, fruit, specKo) {
+  var s = str_(specKo);
+  if (!s) return '';
+  if (!HANGUL_RE.test(s)) return s;
+  var parts = s.split('/').map(function (p) { return p.trim(); });
+  var en = [];
+  for (var i = 0; i < parts.length; i++) {
+    var e = parts[i] ? specMap[fruit + '|' + parts[i]] || (HANGUL_RE.test(parts[i]) ? '' : parts[i]) : '';
+    if (!e) return '';
+    en.push(e);
+  }
+  return en.join('/');
 }
 
 function specMap_(specs) {
@@ -562,8 +585,13 @@ function cleanChanges_(changes, ctx) {
     } else if (DATE_FIELDS.indexOf(f) >= 0) {
       value = parseIsoDate_(v);
     } else if (MONEY_FIELDS.indexOf(f) >= 0) {
-      value = str_(v) === '' ? '' : toNum_(v);
-      if (value === null || value < 0) throw new Error('금액이 숫자가 아니에요: ' + v);
+      // 숫자 하나는 숫자로, '17.3/17.8'처럼 여러 값은 적은 글자 그대로(앞에 '를 붙여 시트가 날짜·숫자로 바꾸지 않게)
+      var s = str_(v);
+      var n = moneyNum_(s);
+      if (s === '') value = '';
+      else if (n !== null) value = n;
+      else if (/\d/.test(s) && s.charAt(0) !== '-' && s.length <= 60) value = "'" + s;
+      else throw new Error('금액은 숫자나 17.3/17.8처럼 적어 주세요: ' + s);
     } else {
       value = str_(v).slice(0, 500);
     }
@@ -576,8 +604,8 @@ function cleanChanges_(changes, ctx) {
 function cellKey_(f, v) {
   if (DATE_FIELDS.indexOf(f) >= 0) return toIsoDate_(v);
   if (MONEY_FIELDS.indexOf(f) >= 0) {
-    var n = toNum_(v);
-    return n === null ? '' : String(n);
+    var n = moneyNum_(v);
+    return n === null ? str_(v).replace(/^'/, '') : String(n);
   }
   if (f === 'ship') return normShip_(v) || str_(v);
   return str_(v);

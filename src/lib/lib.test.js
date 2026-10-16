@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, addMonths, addDays } from './dates.js';
 import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
-import { buyerCards, containersOf, expectedNo, filterPeriod, groupByMonth, lastCost, lastPrice, shipmentKey } from './schedule.js';
+import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, lastCost, lastPrice, shipmentKey } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
 
 describe('날짜 표기 (표기 규칙)', () => {
@@ -37,8 +37,34 @@ describe('금액', () => {
   });
   it('입력 글자 읽기', () => {
     expect(parseMoney('28,000')).toBe(28000);
+    expect(parseMoney('$17.80')).toBe(17.8);
     expect(parseMoney('')).toBe(null);
     expect(Number.isNaN(parseMoney('이만원'))).toBe(true);
+  });
+  it('가격이 여럿이면 적은 글자 그대로(2026-10-16 사용자 요청)', () => {
+    expect(parseMoney('17.3/17.8')).toBe('17.3/17.8');
+    expect(parseMoney('17.3/17.8/18.2')).toBe('17.3/17.8/18.2');
+    expect(parseMoney('17.3/')).toBe(17.3); // '/' 버튼만 누르고 안 쓴 경우
+    expect(parseMoney('17 18')).toBe('17 18'); // 1718로 읽지 않는다
+    expect(Number.isNaN(parseMoney('-5'))).toBe(true);
+    expect(fmtPrice('17.3/17.8', 'USD')).toBe('17.3/17.8');
+    expect(fmtWon('23000/22000')).toBe('23000/22000');
+  });
+});
+
+describe('스펙 영어: 적은 글자 그대로 (2026-10-16 사용자 요청)', () => {
+  const specs = [
+    { fruitKo: '샤인머스캣', specKo: '2kg 4송이', specEn: '2kg, 4 bunches' },
+    { fruitKo: '샤인머스캣', specKo: '450g', specEn: '450g' }
+  ];
+  it('한글이 없으면 그대로', () => {
+    expect(derivedSpecEn(specs, '샤인머스캣', '4kg/450g')).toBe('4kg/450g');
+    expect(derivedSpecEn(specs, '신고배', '15kg 18-24')).toBe('15kg 18-24');
+  });
+  it('/로 이은 스펙은 조각마다 사전에서, 못 찾으면 빈칸(영어를 넣게)', () => {
+    expect(derivedSpecEn(specs, '샤인머스캣', '2kg 4송이/450g')).toBe('2kg, 4 bunches/450g');
+    expect(derivedSpecEn(specs, '샤인머스캣', '2kg 4송이/4kg 5송이')).toBe('');
+    expect(derivedSpecEn(specs, '샤인머스캣', '')).toBe('');
   });
 });
 
@@ -65,6 +91,11 @@ describe('JPG용 허용 칸 (규칙 1)', () => {
   });
   it('바이어가 표시를 끄면 가격도 빠진다', () => {
     expect(toBuyerRow(row, fruits, { withPrice: false }).price).toBe(null);
+  });
+  it('여러 가격은 글자 그대로, 한글이 든 가격은 넣지 않는다', () => {
+    expect(toBuyerRow({ ...row, price: '17.3/17.8' }, fruits).price).toBe('17.3/17.8');
+    expect(toBuyerRow({ ...row, price: '17.3 협의중' }, fruits).price).toBe(null);
+    expect(toBuyerRow({ ...row, price: '17.3/17.8' }, fruits, { withPrice: false }).price).toBe(null);
   });
 });
 
