@@ -39,7 +39,11 @@ function formFromRow(row) {
 const EMPTY = formFromRow({});
 
 function norm(field, v) {
-  if (MONEY_FIELDS.includes(field)) return parseMoney(v);
+  if (MONEY_FIELDS.includes(field)) {
+    // 시트에 적힌 '협의'·'-'처럼 못 읽는 금액은 글자 그대로 비교한다(안 고쳤으면 바뀐 걸로 보지 않고 보내지도 않게)
+    const p = parseMoney(v);
+    return Number.isNaN(p) ? String(v ?? '').trim() : p;
+  }
   return String(v ?? '').trim();
 }
 
@@ -168,17 +172,19 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       if (specChanged) {
         // 사전에 있는 스펙으로 바뀌면 사전 영어를 쓴다(앞 스펙에 맞춰 친 영어가 다른 스펙의 사전을 덮지 않게).
         // 사전에 없는 스펙이면 직접 친 영어는 그대로 둔다.
-        const dictEn = specEnOf(data.specs, next.fruit, next.specKo) || derivedSpecEn(data.specs, next.fruit, next.specKo);
+        // 사전에 없는 스펙은 적은 그대로 영어(4kg/450g)를 넣되, 사람이 직접 친 영어는 지우지 않는다.
+        const dictEn = specEnOf(data.specs, next.fruit, next.specKo);
         if (dictEn) {
           next.specEn = dictEn;
           t.specEn = false;
         } else if (!t.specEn) {
-          next.specEn = '';
+          next.specEn = derivedSpecEn(data.specs, next.fruit, next.specKo);
         }
       }
       if (mode !== 'edit' && !t.price && (specChanged || 'buyer' in patch)) {
         const p = lastPrice(data.rows, { buyer: next.buyer, fruit: next.fruit, specKo: next.specKo.trim() });
-        next.price = p === null ? '' : moneyInput(p, 2, 2);
+        // 직전 값이 '협의'처럼 못 읽는 글자면 넣지 않는다
+        next.price = p === null || Number.isNaN(parseMoney(String(p))) ? '' : moneyInput(p, 2, 2);
       }
       // 복제한 줄의 사이즈를 바꾸면 산지가도 다르니 비운다(규칙 6: 직전 값은 안내 칩으로만)
       if (mode === 'dup' && !t.cost && specChanged &&
@@ -202,7 +208,8 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   need('specKo', '스펙');
   if (form.specKo.trim()) need('specEn', '스펙 영어');
   if (!form.etaTbd) need('eta', 'ETA(모르면 ETA 미정)');
-  const badMoney = MONEY_FIELDS.some((f) => Number.isNaN(parseMoney(form[f])));
+  // 고친 금액 칸만 확인한다(시트에 '협의'처럼 적혀 있던 칸을 안 건드렸으면 그대로 둔다)
+  const badMoney = MONEY_FIELDS.some((f) => !same(norm(f, form[f]), norm(f, init[f])) && Number.isNaN(parseMoney(form[f])));
 
   function buildChanges() {
     const out = {};
@@ -219,7 +226,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
     // 스펙 영어: 사람이 직접 고쳤거나 사전에 없는 스펙일 때만 보낸다.
     // 사전에서 자동으로 채운 값을 보내면, 그사이 시트 스펙 탭에서 고친 영어를 옛 값으로 되돌릴 수 있다.
     const en = norm('specEn', form.specEn);
-    if (en && (touched.specEn || !specKnown) && (!original || en !== norm('specEn', original.specEn))) {
+    if (en && (touched.specEn || !specInDict) && (!original || en !== norm('specEn', original.specEn))) {
       out.specEn = en;
     }
 

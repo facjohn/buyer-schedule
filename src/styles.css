@@ -155,7 +155,7 @@ h1, h2, p { margin: 0; }
 .srow-cost { text-align: right; font-size: 14px; line-height: 22px; color: var(--text-2); }
 .srow-price.small, .srow-cost.small { font-size: 13px; }
 .srow-price, .srow-cost { overflow-wrap: anywhere; }
-.srow .work { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+.srow .work { font-size: 12px; line-height: 16px; color: var(--muted); overflow-wrap: anywhere; }
 .srow .empty { color: #B7BEBA; font-weight: 400; }
 .srow .fruit { font-size: 16px; line-height: 22px; font-weight: 700; }
 .srow .spec { font-size: 14.5px; line-height: 22px; color: var(--text-3); overflow-wrap: anywhere; }

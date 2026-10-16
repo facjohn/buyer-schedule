@@ -77,8 +77,8 @@ const globals = {
     getUuid: () => crypto.randomUUID(),
     formatDate: (d, _tz, fmt) => {
       const p = kst(d);
-      return fmt.replace('yyyy', p.yyyy).replace('MM', p.MM).replace('dd', p.dd)
-        .replace('HH', p.HH).replace('mm', p.mm).replace('ss', p.ss);
+      const map = { ...p, M: String(Number(p.MM)), d: String(Number(p.dd)) };
+      return fmt.replace(/yyyy|MM|dd|HH|mm|ss|M|d/g, (t) => map[t]);
     },
     computeDigest: () => [...crypto.getRandomValues(new Uint8Array(32))].map((b) => (b > 127 ? b - 256 : b)),
     DigestAlgorithm: { SHA_256: 'sha256' }

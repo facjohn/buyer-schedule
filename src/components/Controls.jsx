@@ -96,7 +96,7 @@ export function MoneyField({ value, onChange, symbol, decimal, placeholder, labe
       <span className="money-symbol">{symbol}</span>
       <input ref={ref} inputMode={decimal ? 'decimal' : 'numeric'} value={value} placeholder={placeholder}
         aria-label={label} autoComplete="off"
-        onChange={(e) => onChange(e.target.value.replace(decimal ? /[^\d.,/ ]/g : /[^\d,/ ]/g, ''))} />
+        onChange={(e) => onChange(e.target.value)} />
       <button type="button" className="money-more" aria-label={label + ' 가격 하나 더 (/)'}
         onMouseDown={(e) => e.preventDefault()} onClick={addSlash}>/</button>
     </div>

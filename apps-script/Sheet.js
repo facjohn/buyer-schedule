@@ -196,17 +196,24 @@ function toNum_(v) {
  */
 function moneyNum_(v) {
   if (typeof v === 'number') return isFinite(v) ? v : null;
+  if (isDate_(v)) return null;
   var s = str_(v).replace(/^[₩$]\s*/, '').replace(/\s*원$/, '');
-  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(s)) s = s.replace(/,/g, '');
-  return /^\d+(\.\d+)?$/.test(s) ? Number(s) : null;
+  if (/^\d{1,3}(,\d{3})+(\.\d*)?$/.test(s)) s = s.replace(/,/g, '');
+  // '17.'(소수점까지만 친 값)과 '.5'도 숫자 하나
+  return /^(\d+\.?\d*|\.\d+)$/.test(s) ? Number(s) : null;
 }
 
 /** 금액 칸 → 앱: 숫자 하나면 숫자, '17.3/17.8'처럼 여러 값이나 다른 글자면 적힌 글자 그대로, 비었으면 null */
 function moneyOut_(v) {
   var n = moneyNum_(v);
   if (n !== null) return n;
-  var s = str_(v);
+  var s = moneyText_(v);
   return s === '' ? null : s;
+}
+
+/** 금액 칸의 글자. 시트가 '12/13'(두 가격)을 날짜로 바꿔 둔 칸은 적은 모양(12/13)으로 되돌린다 */
+function moneyText_(v) {
+  return isDate_(v) ? Utilities.formatDate(v, TZ, 'M/d') : str_(v);
 }
 
 function toBool_(v) {

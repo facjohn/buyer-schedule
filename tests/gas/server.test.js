@@ -144,6 +144,24 @@ describe('list', () => {
     expect(w.call({ action: 'list', code: CODE_1 }).rows.find((r) => r.id === 'a1').specEn).toBe('');
   });
 
+  it('스펙을 바꾸면서 영어를 안 보내면 줄의 옛 영어를 지우고, 스펙 탭에 옛 영어를 더하지 않는다', () => {
+    const w = world();
+    const col = (f) => w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === f);
+    w.sheet('schedule').data[2][col('specEn')] = '10kg box';
+    const res = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a2', changes: { specKo: '15kg' } }] });
+    expect(res.ok).toBe(true);
+    expect(w.read('schedule').find((r) => r.id === 'a2').specEn).toBe('');
+    expect(w.read('specs').some((s) => s.specEn === '10kg box')).toBe(false);
+    expect(w.call({ action: 'list', code: CODE_1 }).rows.find((r) => r.id === 'a2').specEn).toBe('15kg');
+  });
+
+  it('스펙을 바꾸며 영어를 보내면 그 영어를 쓴다', () => {
+    const w = world();
+    w.call({ action: 'save', code: CODE_1, items: [{ id: 'a2', changes: { specKo: '15kg', specEn: '15kg box' } }] });
+    expect(w.read('schedule').find((r) => r.id === 'a2').specEn).toBe('15kg box');
+    expect(w.read('specs').find((s) => s.fruitKo === '단감' && s.specKo === '15kg').specEn).toBe('15kg box');
+  });
+
   it('사전에 없는 스펙은 줄에 적힌 영어를 쓴다', () => {
     const w = world();
     w.sheet('schedule').data[2][w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === 'specEn')] = '10kg';
@@ -311,6 +329,20 @@ describe('save', () => {
     expect(res.ok).toBe(true);
     const row = w.read('schedule').find((r) => r.id === res.saved[0].id);
     expect([row.price, row.cost]).toEqual(['15.2/15.5', '17000/16500']);
+  });
+
+  it('시트가 두 가격(12/13)을 날짜로 바꿔 둔 칸은 적은 모양으로 되돌린다', () => {
+    const w = world();
+    w.sheet('schedule').data[1][w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === 'price')] = d('2026-12-13');
+    expect(w.call({ action: 'list', code: CODE_1 }).rows.find((x) => x.id === 'a1').price).toBe('12/13');
+  });
+
+  it("'17.'과 '.5'는 숫자 하나", () => {
+    const w = world();
+    expect(w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { price: '17.' } }] }).ok).toBe(true);
+    expect(w.read('schedule').find((r) => r.id === 'a1').price).toBe(17);
+    w.sheet('schedule').data[1][w.ctx.COLUMNS.schedule.findIndex((c) => c[0] === 'cost')] = '.5';
+    expect(w.call({ action: 'list', code: CODE_1 }).rows.find((x) => x.id === 'a1').cost).toBe(0.5);
   });
 
   it('숫자가 없는 금액은 거절한다', () => {

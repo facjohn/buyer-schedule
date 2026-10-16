@@ -505,6 +505,11 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
   // No.가 빈 줄(시트에서 붙여 넣는 중)은 여기서 붙이지 않고 findRepairs_에 맡긴다(ETA를 고치는 중일 수 있어서)
   if (buyer && no) addContainer_(nb, buyer, no, noYear || yearOf_(eta));
 
+  // 스펙이나 과일을 바꾸면서 영어를 안 보냈으면(사전·적은 그대로 영어를 쓰는 스펙) 줄의 옛 영어를 지운다.
+  // 그대로 두면 새 스펙에 옛 영어('10kg box')가 붙고 스펙 탭에도 그렇게 더해진다.
+  if ((writes.specKo !== undefined || writes.fruit !== undefined) && !changes.specEn && str_(cur.specEn)) {
+    writes.specEn = '';
+  }
   var fields = Object.keys(writes);
   if (fields.length) {
     writes.updatedBy = member.name;
@@ -605,7 +610,7 @@ function cellKey_(f, v) {
   if (DATE_FIELDS.indexOf(f) >= 0) return toIsoDate_(v);
   if (MONEY_FIELDS.indexOf(f) >= 0) {
     var n = moneyNum_(v);
-    return n === null ? str_(v).replace(/^'/, '') : String(n);
+    return n === null ? moneyText_(v).replace(/^'/, '') : String(n);
   }
   if (f === 'ship') return normShip_(v) || str_(v);
   return str_(v);

@@ -36,8 +36,9 @@ export function fmtWon(n) {
 /** 숫자 하나로 읽히면 숫자('$17.80', '28,000', '28000원'), 아니면 null. '17 18'은 숫자 하나가 아니다 */
 export function moneyNumber(s) {
   let t = String(s ?? '').trim().replace(/^[₩$]\s*/, '').replace(/\s*원$/, '');
-  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, '');
-  return /^\d+(\.\d+)?$/.test(t) ? Number(t) : null;
+  if (/^\d{1,3}(,\d{3})+(\.\d*)?$/.test(t)) t = t.replace(/,/g, '');
+  // '17.'(소수점까지만 친 값)과 '.5'도 숫자 하나
+  return /^(\d+\.?\d*|\.\d+)$/.test(t) ? Number(t) : null;
 }
 
 /**

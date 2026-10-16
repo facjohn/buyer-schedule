@@ -46,6 +46,9 @@ describe('금액', () => {
     expect(parseMoney('17.3/17.8/18.2')).toBe('17.3/17.8/18.2');
     expect(parseMoney('17.3/')).toBe(17.3); // '/' 버튼만 누르고 안 쓴 경우
     expect(parseMoney('17 18')).toBe('17 18'); // 1718로 읽지 않는다
+    expect(parseMoney('17.')).toBe(17);
+    expect(parseMoney('.5')).toBe(0.5);
+    expect(parseMoney('17.3~17.8')).toBe('17.3~17.8');
     expect(Number.isNaN(parseMoney('-5'))).toBe(true);
     expect(fmtPrice('17.3/17.8', 'USD')).toBe('17.3/17.8');
     expect(fmtWon('23000/22000')).toBe('23000/22000');

@@ -54,7 +54,7 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
       </div>
       <div className={'srow-cost num' + (cost.length > 8 ? ' small' : '')}>
         {breakAtSlash(cost) || <span className="empty">—</span>}
-        {work && <div className="work">작업 {work}</div>}
+        {work && <div className="work">작업 {breakAtSlash(work)}</div>}
       </div>
     </div>
   );
