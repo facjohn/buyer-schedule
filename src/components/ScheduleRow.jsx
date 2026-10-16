@@ -1,4 +1,5 @@
-// 스케줄 한 건 = 두 줄. 윗줄 No. · 과일 · 운송 · 스펙 · 산지(흐리게), 아랫줄 ETA · 바이어가 · 산지가(작업비는 그 아래 작게).
+// 스케줄 한 건. 윗줄 No. · 과일 · 운송 · 스펙 · 산지(흐리게),
+// 아랫줄 상차일·ETA(위아래로, 2026-10-16 사용자 요청) · 바이어가 · 산지가(작업비는 그 아래 작게). 정렬과 월 묶음은 ETA 기준.
 import { fmtKo } from '../lib/dates.js';
 import { fmtPrice, fmtWon } from '../lib/money.js';
 import { useLongPress } from '../hooks/useLongPress.js';
@@ -15,7 +16,7 @@ export function TableHead() {
     <div className="srow srow-head">
       <div className="srow-no">No.</div>
       <div className="srow-top">과일 · 운송 · 스펙</div>
-      <div className="srow-eta">ETA</div>
+      <div className="srow-eta">상차일 · ETA</div>
       <div className="srow-price">바이어가</div>
       <div className="srow-cost"><IconLock size={11} /> 산지가</div>
     </div>
@@ -29,7 +30,7 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
   const work = fmtWon(row.workCost);
   return (
     <div className="srow" role="button" tabIndex={0}
-      aria-label={`No. ${row.no || ''} ${row.fruit} ${row.specKo} ${fmtKo(row.eta)}`} {...press}>
+      aria-label={`No. ${row.no || ''} ${row.fruit} ${row.specKo} 상차 ${fmtKo(row.loadDate) || '없음'} ETA ${fmtKo(row.eta) || '미정'}`} {...press}>
       <div className={'srow-no num' + (shortNo(row.no).length > 3 ? ' long' : '')} title={String(row.no ?? '')}>
         {shortNo(row.no)}
       </div>
@@ -39,15 +40,22 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
         <span className="spec">{row.specKo}</span>
         {row.origin && <span className="origin">· {row.origin}</span>}
       </div>
-      <div className="srow-eta">
-        {row.eta ? (
-          <>
-            <span className="eta">{fmtKo(row.eta)}</span>
-            {row.status !== '확정' && <span className="chip-tbc">미정</span>}
-          </>
-        ) : (
-          <span className="chip-tbc">ETA 미정</span>
-        )}
+      <div className="srow-eta srow-dates">
+        <span className="dlabel">상차</span>
+        <span className="dval">
+          {row.loadDate ? <span className="load">{fmtKo(row.loadDate)}</span> : <span className="empty">—</span>}
+        </span>
+        <span className="dlabel">ETA</span>
+        <span className="dval">
+          {row.eta ? (
+            <>
+              <span className="eta">{fmtKo(row.eta)}</span>
+              {row.status !== '확정' && <span className="chip-tbc">미정</span>}
+            </>
+          ) : (
+            <span className="chip-tbc">ETA 미정</span>
+          )}
+        </span>
       </div>
       <div className={'srow-price num' + (price.length > 8 ? ' small' : '')}>
         {breakAtSlash(price) || <span className="empty">—</span>}

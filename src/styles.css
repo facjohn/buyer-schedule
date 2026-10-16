@@ -147,10 +147,15 @@ h1, h2, p { margin: 0; }
 }
 .srow[role='button'] { cursor: pointer; }
 .srow[role='button']:active, .srow[role='button']:focus-visible { background: var(--head-bg); }
-.srow-no { grid-row: span 2; font-size: 16px; line-height: 22px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.srow-no { font-size: 16px; line-height: 22px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 .srow-no.long { font-size: 13px; line-height: 18px; letter-spacing: -0.3px; padding-top: 2px; } /* 인보이스 번호 26-01 */
 .srow-top { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 2px; min-width: 0; }
-.srow-eta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.srow-eta { grid-column: 1 / 3; min-width: 0; }
+/* 아랫줄 날짜: 이름표(상차·ETA)는 No. 칸 자리에, 날짜는 과일 칸 자리에 맞춘다 */
+.srow-dates { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 8px; row-gap: 0; align-items: center; }
+.srow-dates .dlabel { font-size: 12px; line-height: 22px; font-weight: 600; color: var(--muted); }
+.srow-dates .dval { display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; min-width: 0; }
+.srow .load { font-size: 14px; line-height: 22px; color: var(--text-2); white-space: nowrap; }
 .srow-price { text-align: right; font-size: 15px; line-height: 22px; font-weight: 700; }
 .srow-cost { text-align: right; font-size: 14px; line-height: 22px; color: var(--text-2); }
 .srow-price.small, .srow-cost.small { font-size: 13px; }
