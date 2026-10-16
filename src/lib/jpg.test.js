@@ -76,7 +76,8 @@ describe('검토에서 나온 경우', () => {
     const a = buildJpg(noEn, '킹고');
     const ta = drawnTexts(a.model).join('\n');
     expect(HANGUL.test(ta)).toBe(false);
-    expect(ta).toContain('Taiwan');
+    expect(ta).toContain('Shipping Schedule');
+    expect(ta).not.toContain('Taiwan');
     expect(a.warnings.join(' ')).toContain('영어 이름');
     const gone = { ...data, buyers: [] };
     const b = buildJpg(gone, '킹고');
@@ -142,15 +143,27 @@ describe('JPG 그리기', () => {
     for (const v of ['28,500', '23,000', '17,000', '12,000', '28500']) expect(all).not.toContain(v);
   });
 
-  it('영어 표: 인보이스 번호, Singo pear, Oct 20, $31.00, 미정은 TBC, ETA 미정은 맨 아래', () => {
+  it('영어 표: 제목 Kingo Schedule, 인보이스 번호, Singo pear, Oct 20, $31.00, 미정은 TBC, ETA 미정은 맨 아래', () => {
     const t = drawnTexts(buildJpg(data, '킹고').model);
-    for (const v of ['Shipping Schedule', 'Kingo · Taiwan', 'From Oct 14, 2026', 'KINGO-26-02', 'Singo pear', 'Oct 20',
-      '$31.00', '$26.50', 'TBC', 'ETA to be confirmed', 'Prices in USD per carton, FOB', 'Hyun Nong Fresh · Korea']) {
+    for (const v of ['Kingo Schedule', 'KINGO-26-02', 'Singo pear', 'Oct 20',
+      '$31.00', '$26.50', 'TBC', 'Prices in USD per carton, FOB', 'Hyun Nong Fresh · Korea']) {
       expect(t.join('\n')).toContain(v);
     }
-    const oct = t.indexOf('October');
-    expect(oct).toBeGreaterThan(-1);
-    expect(oct).toBeLessThan(t.indexOf('ETA to be confirmed'));
+    expect(t.indexOf('KINGO-26-03')).toBeGreaterThan(t.lastIndexOf('KINGO-26-02'));
+  });
+
+  it('월 제목·바이어 나라·From·Updated 줄은 그리지 않는다(2026-10-16 사용자 요청)', () => {
+    const all = drawnTexts(buildJpg(data, '킹고').model).join('\n');
+    for (const v of ['October', 'Taiwan', 'From', 'Updated', 'Shipping Schedule', 'ETA to be confirmed', 'Kingo ·']) {
+      expect(all).not.toContain(v);
+    }
+  });
+
+  it('제목이 길면 글자를 줄이고, 그래도 길면 두 줄로', () => {
+    const long = { ...data, buyers: [{ ...data.buyers[0], nameEn: 'Pomina International Fresh Fruit Trading Company Limited' }] };
+    const ops = layoutJpg(buildJpg(long, '킹고').model, measure).ops.filter((o) => o.t === 'text' && /700 (4|5|6)\dpx/.test(o.font));
+    expect(ops.length).toBeGreaterThan(1);
+    for (const o of ops) expect(measure(o.text, o.font)).toBeLessThanOrEqual(1080 - 112);
   });
 
   it('바이어가를 빼면 가격과 가격 줄이 없다', () => {
@@ -167,11 +180,11 @@ describe('JPG 그리기', () => {
     expect(op.font).toContain('22px');
   });
 
-  it('올해가 아닌 달 제목에는 해를 붙인다', () => {
+  it('올해가 아닌 ETA는 해까지', () => {
     const d = { ...data, rows: [data.rows[1], { ...data.rows[1], id: 'n', no: 'KINGO-26-09', eta: '2027-01-05' }] };
     const t = drawnTexts(buildJpg(d, '킹고').model);
-    expect(t).toContain('October');
-    expect(t).toContain('January 2027');
+    expect(t).toContain('Oct 20');
+    expect(t).toContain('Jan 5, 2027');
   });
 
   it('줄이 많아도 높이가 줄 수만큼 늘어난다', () => {

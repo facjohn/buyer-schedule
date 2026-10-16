@@ -96,8 +96,8 @@ docs/mockups/html/ 에는 같은 화면을 정적 HTML로 찍어 둔 파일이 �
 - 화면을 찍지 않는다. JPG 전용 컴포넌트를 화면 밖에 그려 이미지로 바꾸고, 이 컴포넌트는 허용한 칸만 담은 데이터만 받는다.
 - 폭 1080px, 높이는 줄 수만큼 늘어난다(최소 1350px). 결과 파일도 정확히 폭 1080px(pixelRatio 1). 여백 위 64 / 옆 56 / 아래 56
 - 한 JPG에는 한 회사만. 기간 안에 Hyun Nong Fresh와 Royal 물량이 섞이면 미리보기 위에 회사 버튼을 두고 회사별로 따로 만든다
-- 맨 위: 회사명(그 JPG에 담긴 줄의 회사, 초록, 자간 넓게) · Shipping Schedule(60px) · 오른쪽에 바이어 영어 이름 · 나라, From 오늘 날짜, Updated 날짜 (예: Updated Oct 13, 2026)
-- 표 머리글 22px, 표 글자 28px, 월 이름 26px 초록. ETA 미정 줄은 맨 아래 "ETA to be confirmed" 묶음, ETA 자리에 TBC(#A15C07)
+- 맨 위: 회사명(그 JPG에 담긴 줄의 회사, 초록, 자간 넓게) · 제목 "Kingo Schedule"(바이어 영어 이름 + Schedule, 60px, 길면 40px까지 줄이고 그래도 길면 두 줄). 영어 이름이 없으면 "Shipping Schedule". 오른쪽 바이어·나라·From·Updated 줄은 없음(2026-10-16 사용자 요청)
+- 표 머리글 22px, 표 글자 28px. 월 제목 없이 ETA 순(No. 6·7이 날짜로 읽히지 않게). ETA 미정 줄은 맨 아래, ETA 자리에 TBC(#A15C07). 올해가 아닌 ETA는 "Jan 5, 2027"
 - 열 시작(x): No. 76 · Item 266 · Shipping 446 · Spec 556 · ETA 736 · Price 오른쪽 끝 1004. No.는 인보이스 번호(KINGO-26-01)가 한 줄에 들어가게 176px이고, 길면 24px에서 20px까지 줄인 뒤에도 넘치면 하이픈 뒤에서 줄을 바꾼다
 - 미정 건은 ETA 아래에 TBC 칩(#A15C07 글자, #FCF1E3 바탕)
 - 맨 아래: 가격 줄(바이어 탭 currency, priceUnit, priceTerm으로 "Prices in USD per carton, FOB") / TBC = to be confirmed, 오른쪽에 회사명 · Korea

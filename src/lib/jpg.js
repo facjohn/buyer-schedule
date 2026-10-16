@@ -1,7 +1,7 @@
 // 바이어에게 보내는 영어 JPG.
 // 화면을 찍지 않고 전용 그림판(canvas)에 직접 그린다. 그리는 쪽(layoutJpg)은 buildJpgModel이 만든 모델만 받고,
 // 모델의 줄은 toBuyerRow(허용한 칸 7개)로만 만든다(절대 규칙 1). 산지가·작업비·산지·상차일·수량·메모는 모델에 없다.
-import { fmtEn, fmtEnLong, fmtMonthEn } from './dates.js';
+import { fmtEn, fmtEnLong } from './dates.js';
 import { fmtPrice } from './money.js';
 import { sortRows } from './schedule.js';
 import { fruitEnMap, toBuyerRow } from './buyerView.js';
@@ -58,9 +58,8 @@ export function buildJpg(data, buyerName, { exporter = null, showPrice = true } 
       exporter: chosen || (all.length ? '' : buyer.exporter || ''),
       // 영어 이름이 없으면 한글 이름을 대신 쓰지 않는다(미리보기에서 알린다)
       buyer: buyer.nameEn || '',
-      country: buyer.countryEn || '',
-      from: data.today,
-      updated: data.today
+      // 사진에는 그리지 않는다(파일 이름과 올해가 아닌 ETA에 해를 붙일 때만 쓴다)
+      date: data.today
     }
   };
   return {
@@ -138,15 +137,15 @@ export function layoutJpg(model, measure) {
       x += measure(ch, f) + 5;
     }
   }
-  text(PX, y + 98, 'Shipping Schedule', font(700, 60), C.text);
-  const rightW = W - PX * 2 - measure('Shipping Schedule', font(700, 60)) - 32;
-  const buyerLine = [h.buyer, h.country].filter(Boolean).join(' · ');
-  let bs = 36;
-  while (bs > 24 && measure(buyerLine, font(700, bs)) > rightW) bs -= 2;
-  if (buyerLine) text(W - PX, y + 34, buyerLine, font(700, bs), C.text, 'right');
-  text(W - PX, y + 74, `From ${fmtEnLong(h.from)}`, font(400, 26), C.muted, 'right');
-  text(W - PX, y + 110, `Updated ${fmtEnLong(h.updated)}`, font(400, 26), C.muted, 'right');
-  y += 132;
+  // 제목은 'Kingo Schedule' 하나만(바이어 이름·나라·From·Updated 줄은 두지 않는다, 2026-10-16 사용자 요청).
+  // 영어 이름이 없으면 한글 대신 'Shipping Schedule'. 길면 60px에서 40px까지 줄이고, 그래도 길면 줄바꿈
+  const title = h.buyer ? `${h.buyer} Schedule` : 'Shipping Schedule';
+  const titleW = W - PX * 2;
+  let ts = 60;
+  while (ts > 40 && measure(title, font(700, ts)) > titleW) ts -= 4;
+  const titleLines = wrapText(title, font(700, ts), titleW, measure);
+  titleLines.forEach((s, i) => text(PX, y + 98 + i * (ts + 10), s, font(700, ts), C.text));
+  y += 132 + (titleLines.length - 1) * (ts + 10);
   rect(PX, y, W - PX * 2, 4, C.brand);
   y += 36;
 
@@ -168,32 +167,19 @@ export function layoutJpg(model, measure) {
   if (model.showPrice) text(col.priceR, y + 38, 'Price', hf, C.text2, 'right');
   y += 60;
 
-  // ── 줄: 월별로 묶고, ETA 미정은 맨 뒤 ─────────
-  const groups = [];
-  for (const r of model.rows) {
-    const key = r.eta ? r.eta.slice(0, 7) : 'tbc';
-    let g = groups.find((x) => x.key === key);
-    if (!g) {
-      // 올해가 아닌 달은 해를 붙인다(January 2027). 두 해에 걸쳐도 같은 달 이름이 헷갈리지 않게
-      const label = key === 'tbc' ? 'ETA to be confirmed'
-        : fmtMonthEn(key) + (key.slice(0, 4) !== String(h.from).slice(0, 4) ? ' ' + key.slice(0, 4) : '');
-      g = { key, label, rows: [] };
-      groups.push(g);
-    }
-    g.rows.push(r);
-  }
-  groups.sort((a, b) => (a.key === 'tbc') - (b.key === 'tbc'));
+  // ── 줄: ETA 순, ETA 미정은 맨 뒤 ─────────
+  // 월 제목(October)은 두지 않는다. No.(차수) 6·7이 '10월 6일·7일'로 읽히지 않게(2026-10-16 사용자 요청). 달은 ETA 칸에 있다.
+  const rows = [...model.rows.filter((r) => r.eta), ...model.rows.filter((r) => !r.eta)];
+  const year = String(h.date || '').slice(0, 4);
 
   const LH = 36;
   const NO_F = font(700, 24);
   const ITEM_F = font(700, 28);
   const BODY_F = font(400, 28);
   const PRICE_F = font(700, 28);
-  for (const g of groups) {
-    y += 30;
-    text(col.no, y + 24, g.label, font(700, 26), C.brand);
-    y += 30;
-    for (const r of g.rows) {
+  y += 8;
+  {
+    for (const r of rows) {
       const top = y + 22;
       // 인보이스 번호는 한 줄이 되도록 24px에서 20px까지 줄여 보고, 그래도 길면 하이픈 뒤에서 줄바꿈
       const noStr = r.no === null ? '' : String(r.no);
@@ -202,7 +188,8 @@ export function layoutJpg(model, measure) {
       const noLines = wrapText(noStr, noF, width.no, measure);
       const itemLines = wrapText(r.fruit || '—', ITEM_F, width.item, measure);
       const specLines = wrapText(r.spec || '—', BODY_F, width.spec, measure);
-      const etaText = r.eta ? fmtEn(r.eta) : 'TBC';
+      // 올해가 아닌 ETA는 해까지(Jan 5, 2027)
+      const etaText = !r.eta ? 'TBC' : r.eta.slice(0, 4) === year ? fmtEn(r.eta) : fmtEnLong(r.eta);
       const chip = r.eta && r.status === 'tbc';
       const etaF = r.eta ? BODY_F : font(700, 28);
       const etaH = LH + (chip ? 40 : 0);
@@ -290,5 +277,5 @@ export function paintJpg(ctx, layout) {
 /** 파일 이름: Buyer_A_Schedule_2026-10-14.jpg */
 export function jpgFileName(model) {
   const who = String(model.header.buyer || 'Buyer').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '') || 'Buyer';
-  return `${who}_Schedule_${model.header.updated}.jpg`;
+  return `${who}_Schedule_${model.header.date}.jpg`;
 }
