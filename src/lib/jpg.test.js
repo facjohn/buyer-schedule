@@ -116,16 +116,33 @@ describe('검토에서 나온 경우', () => {
     expect(drawnTexts(model)).toContain('No upcoming shipments.');
   });
 
-  it('긴 가격은 ETA 글자와 겹치지 않는다', () => {
+  it('ETA는 맨 오른쪽, 긴 가격·스펙도 옆 칸과 겹치지 않는다(2026-10-16 사용자 요청)', () => {
     const twd = { ...data, buyers: [{ ...data.buyers[0], currency: 'TWD' }],
-      rows: [{ ...data.rows[1], eta: '2026-09-30', price: 1300 }, { ...data.rows[1], id: 'z', eta: '2026-11-30', price: 1234567.5 }] };
+      rows: [{ ...data.rows[1], eta: '2026-09-30', price: 1300 }, { ...data.rows[1], id: 'z', eta: '2026-11-30', price: '33/28.5/24',
+        specEn: '15kg, 18-24s, 26-30s, 32-36s' }] };
     const today = { ...twd, today: '2026-09-01' };
     const ops = layoutJpg(buildJpg(today, '킹고').model, measure).ops.filter((o) => o.t === 'text');
-    for (const p of ops.filter((o) => o.align === 'right' && o.text.startsWith('NT$'))) {
-      const eta = ops.find((o) => /^(Sept|Nov) 30$/.test(o.text) && Math.abs(o.y - p.y) < 30);
-      if (eta) expect(p.x - measure(p.text, p.font)).toBeGreaterThanOrEqual(eta.x + measure(eta.text, eta.font) + 16);
+    const head = (t) => ops.find((o) => o.text === t);
+    expect(head('ETA').x).toBeGreaterThan(head('Price').x);
+    expect(head('Price').x).toBeGreaterThan(head('Spec').x);
+    const etaX = head('ETA').x;
+    const priceOps = ops.filter((o) => o.align === 'right' && o.y > head('ETA').y);
+    expect(priceOps.length).toBeGreaterThan(0);
+    for (const p of priceOps) {
+      expect(p.x).toBeLessThanOrEqual(etaX - 16);
+      expect(p.x - measure(p.text, p.font)).toBeGreaterThan(head('Spec').x);
     }
-    expect(ops.some((o) => o.text === 'NT$1,234,567.50')).toBe(true);
+    const specOps = ops.filter((o) => o.x === head('Spec').x && o.y > head('ETA').y);
+    const priceLeft = Math.min(...priceOps.map((p) => p.x - measure(p.text, p.font)));
+    for (const s of specOps) expect(s.x + measure(s.text, s.font)).toBeLessThanOrEqual(priceLeft);
+    expect(ops.some((o) => o.text === 'NT$1,300.00')).toBe(true);
+    expect(ops.map((o) => o.text).join('')).toContain('33/28.5/24');
+  });
+
+  it('스펙·가격이 짧으면 남는 폭은 Spec에', () => {
+    const ops = layoutJpg(buildJpg(data, '킹고').model, measure).ops.filter((o) => o.t === 'text');
+    const x = (t) => ops.find((o) => o.text === t).x;
+    expect(x('Price') - x('Spec')).toBeGreaterThan(200);
   });
 });
 
@@ -146,15 +163,16 @@ describe('JPG 그리기', () => {
   it('영어 표: 제목 Kingo Schedule, 인보이스 번호, Singo pear, Oct 20, $31.00, 미정은 TBC, ETA 미정은 맨 아래', () => {
     const t = drawnTexts(buildJpg(data, '킹고').model);
     for (const v of ['Kingo Schedule', 'KINGO-26-02', 'Singo pear', 'Oct 20',
-      '$31.00', '$26.50', 'TBC', 'Prices in USD per carton, FOB', 'Hyun Nong Fresh · Korea']) {
+      '$31.00', '$26.50', 'TBC']) {
       expect(t.join('\n')).toContain(v);
     }
     expect(t.indexOf('KINGO-26-03')).toBeGreaterThan(t.lastIndexOf('KINGO-26-02'));
   });
 
-  it('월 제목·바이어 나라·From·Updated 줄은 그리지 않는다(2026-10-16 사용자 요청)', () => {
+  it('월 제목·바이어 나라·From·Updated 줄과 맨 아래 줄(Prices in·TBC 설명·회사 · Korea)은 그리지 않는다(2026-10-16 사용자 요청)', () => {
     const all = drawnTexts(buildJpg(data, '킹고').model).join('\n');
-    for (const v of ['October', 'Taiwan', 'From', 'Updated', 'Shipping Schedule', 'ETA to be confirmed', 'Kingo ·']) {
+    for (const v of ['October', 'Taiwan', 'From', 'Updated', 'Shipping Schedule', 'ETA to be confirmed', 'Kingo ·',
+      'Prices in', 'to be confirmed', '· Korea']) {
       expect(all).not.toContain(v);
     }
   });

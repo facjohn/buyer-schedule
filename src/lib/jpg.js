@@ -55,7 +55,6 @@ export function buildJpg(data, buyerName, { exporter = null, showPrice = true } 
     rows: mine.map((r) => toBuyerRow(r, fruitEn, { withPrice: showPrice })),
     showPrice,
     currency,
-    priceLine: showPrice ? `Prices in ${currency} per ${buyer.priceUnit || 'carton'}, ${buyer.priceTerm || 'FOB'}` : '',
     header: {
       // 일정이 하나도 없으면 바이어 탭의 기본 회사로
       exporter: chosen || (all.length ? '' : buyer.exporter || ''),
@@ -73,7 +72,7 @@ export function buildJpg(data, buyerName, { exporter = null, showPrice = true } 
   };
 }
 
-/** 글자를 폭에 맞게 줄바꿈(띄어쓰기 기준, 한 낱말이 너무 길면 하이픈 뒤에서, 그래도 길면 글자 단위) */
+/** 글자를 폭에 맞게 줄바꿈(띄어쓰기 기준, 한 낱말이 너무 길면 '-'·'/' 뒤에서, 그래도 길면 글자 단위) */
 export function wrapText(text, fnt, maxW, measure) {
   const words = String(text || '').split(/\s+/).filter(Boolean);
   const lines = [];
@@ -92,8 +91,8 @@ export function wrapText(text, fnt, maxW, measure) {
   };
   const push = (w) => {
     if (measure(w, fnt) <= maxW) return w;
-    // 인보이스 번호(HONGKONG-26-01)는 하이픈 뒤에서 자른다
-    const pieces = w.match(/[^-]+-*|-+/g) || [w];
+    // 인보이스 번호(HONGKONG-26-01)는 하이픈 뒤에서, 여러 가격(33/28.5/24)은 '/' 뒤에서 자른다
+    const pieces = w.match(/[^-/]+[-/]*|[-/]+/g) || [w];
     let part = '';
     for (const p of pieces) {
       if (part && measure(part + p, fnt) > maxW) {
@@ -152,87 +151,115 @@ export function layoutJpg(model, measure) {
   rect(PX, y, W - PX * 2, 4, C.brand);
   y += 36;
 
-  // ── 표 머리 ─────────────────────────────
-  // No. 칸은 실제 번호 폭에 맞춘다: 6·7처럼 짧으면 Item이 바로 옆에, 인보이스 번호(KINGO-26-01)면 넓게(최대 176px).
-  // 남는 폭은 줄바꿈이 잦은 Item과 Spec에 반씩 준다(2026-10-16 사용자 요청: No.와 Item 사이가 너무 멀다)
+  // ── 표: No. · Item · Shipping · Spec · Price · ETA ─────────
+  // ETA는 맨 오른쪽(2026-10-16 사용자 요청: 스펙과 가격을 길게 쓸 여유). 칸마다 실제 글자 폭에 맞추고 남는 폭은 Spec에 준다.
+  // No.는 짧으면(6·7) Item 바로 옆, 인보이스 번호(KINGO-26-01)면 넓게.
+  // 월 제목(October)은 두지 않는다. No.(차수) 6·7이 '10월 6일·7일'로 읽히지 않게. 달은 ETA 칸에 있다.
   const hf = font(600, 22);
   const NO_F = font(700, 24);
+  const ITEM_F = font(700, 28);
+  const BODY_F = font(400, 28);
+  const PRICE_F = font(700, 28);
+  const LH = 36;
+  const GAP = 32;
+  const rows = [...model.rows.filter((r) => r.eta), ...model.rows.filter((r) => !r.eta)];
+  const year = String(h.date || '').slice(0, 4);
   const noStrOf = (r) => (r.no === null || r.no === undefined ? '' : String(r.no));
-  const noW = Math.ceil(Math.min(176, Math.max(measure('No.', hf), ...model.rows.map((r) => measure(noStrOf(r), NO_F)))));
-  const SHIP_W = 120;
-  const colItem = PX + 20 + noW + 36;
-  const colEta = PX + 680;
-  const half = Math.floor((colEta - colItem - SHIP_W) / 2);
-  const col = { no: PX + 20, item: colItem, ship: colItem + half, spec: colItem + half + SHIP_W, eta: colEta, priceR: W - PX - 20 };
-  const width = {
-    no: noW,
-    item: col.ship - col.item - 14,
-    spec: col.eta - col.spec - 14
-  };
+  // 올해가 아닌 ETA는 해까지(Jan 5, 2027)
+  const etaOf = (r) => (!r.eta ? 'TBC' : r.eta.slice(0, 4) === year ? fmtEn(r.eta) : fmtEnLong(r.eta));
+  const priceOf = (r) => (r.price === null ? 'TBC' : fmtPrice(r.price, model.currency));
+  const widest = (label, list) => Math.ceil(Math.max(measure(label, hf), ...list));
+
+  const noW = Math.min(176, widest('No.', rows.map((r) => measure(noStrOf(r), NO_F))));
+  const shipW = widest('Shipping', rows.map((r) => measure(r.ship || '—', BODY_F)));
+  const etaW = widest('ETA', rows.map((r) => measure(etaOf(r), BODY_F)));
+  // Item과 Price는 한 줄에 다 들어가는 폭(Item 최대 230, Price 최대 260)을 먼저 주고, 남는 폭은 모두 Spec에 준다
+  // (스펙은 길면 두 줄로 써도 읽기 쉽다). Spec이 160px보다 좁아지면 Item(140까지)과 Price를 같은 비율로 줄인다.
+  // 가격은 '/' 뒤에서만 끊을 수 있어서, 끊을 수 없는 가장 긴 조각(NT$1,300.00)이 22px로 들어갈 폭은 늘 남긴다.
+  const priceHard = model.showPrice
+    ? Math.ceil(Math.max(0, ...rows.flatMap((r) => (priceOf(r).match(/[^/]+\/?|\//g) || ['']).map((p) => measure(p, font(700, 22))))))
+    : 0;
+  const fixed = noW + 36 + shipW + GAP * 2 + (model.showPrice ? GAP : 0) + 40 + etaW;
+  const avail = W - PX * 2 - 40 - fixed;
+  let itemW = Math.min(230, widest('Item', rows.map((r) => measure(r.fruit || '—', ITEM_F))));
+  let priceW = model.showPrice ? Math.min(260, widest('Price', rows.map((r) => measure(priceOf(r), PRICE_F)))) : 0;
+  const specMin = Math.min(160, widest('Spec', rows.map((r) => measure(r.spec || '—', BODY_F))));
+  let specW = avail - itemW - priceW;
+  if (specW < specMin) {
+    const itemFloor = Math.min(itemW, 140);
+    const priceFloor = Math.min(priceW, Math.max(130, priceHard));
+    const give = (itemW - itemFloor) + (priceW - priceFloor);
+    const want = specMin - specW;
+    if (give >= want) {
+      itemW -= ((itemW - itemFloor) * want) / (give || 1);
+      priceW -= ((priceW - priceFloor) * want) / (give || 1);
+      specW = specMin;
+    } else {
+      // 그래도 모자라면 가격은 지키고 Item·Spec을 같은 비율로 줄인다
+      priceW = priceFloor;
+      const share = Math.max(0, avail - priceW) / ((itemFloor + specMin) || 1);
+      itemW = itemFloor * share;
+      specW = specMin * share;
+    }
+  }
+  [itemW, specW, priceW] = [itemW, specW, priceW].map((v) => Math.floor(v));
+  const col = { no: PX + 20 };
+  col.item = col.no + noW + 36;
+  col.ship = col.item + itemW + GAP;
+  col.spec = col.ship + shipW + GAP;
+  col.eta = W - PX - 20 - etaW; // 맨 오른쪽 칸(날짜는 왼쪽 맞춤)
+  col.priceR = col.eta - 40; // 가격은 ETA 바로 왼쪽에 오른쪽 맞춤
+  const width = { no: noW, item: itemW, spec: specW, price: priceW };
+
   rect(PX, y, W - PX * 2, 60, C.head, 12);
   text(col.no, y + 38, 'No.', hf, C.text2);
   text(col.item, y + 38, 'Item', hf, C.text2);
   text(col.ship, y + 38, 'Shipping', hf, C.text2);
   text(col.spec, y + 38, 'Spec', hf, C.text2);
-  text(col.eta, y + 38, 'ETA', hf, C.text2);
   if (model.showPrice) text(col.priceR, y + 38, 'Price', hf, C.text2, 'right');
+  text(col.eta, y + 38, 'ETA', hf, C.text2);
   y += 60;
 
   // ── 줄: ETA 순, ETA 미정은 맨 뒤 ─────────
-  // 월 제목(October)은 두지 않는다. No.(차수) 6·7이 '10월 6일·7일'로 읽히지 않게(2026-10-16 사용자 요청). 달은 ETA 칸에 있다.
-  const rows = [...model.rows.filter((r) => r.eta), ...model.rows.filter((r) => !r.eta)];
-  const year = String(h.date || '').slice(0, 4);
-
-  const LH = 36;
-  const ITEM_F = font(700, 28);
-  const BODY_F = font(400, 28);
-  const PRICE_F = font(700, 28);
   y += 8;
-  {
-    for (const r of rows) {
-      const top = y + 22;
-      // 인보이스 번호는 한 줄이 되도록 24px에서 20px까지 줄여 보고, 그래도 길면 하이픈 뒤에서 줄바꿈
-      const noStr = noStrOf(r);
-      let noF = NO_F;
-      for (let s = 22; s >= 20 && measure(noStr, noF) > width.no; s -= 2) noF = font(700, s);
-      const noLines = wrapText(noStr, noF, width.no, measure);
-      const itemLines = wrapText(r.fruit || '—', ITEM_F, width.item, measure);
-      const specLines = wrapText(r.spec || '—', BODY_F, width.spec, measure);
-      // 올해가 아닌 ETA는 해까지(Jan 5, 2027)
-      const etaText = !r.eta ? 'TBC' : r.eta.slice(0, 4) === year ? fmtEn(r.eta) : fmtEnLong(r.eta);
-      const chip = r.eta && r.status === 'tbc';
-      const etaF = r.eta ? BODY_F : font(700, 28);
-      const etaH = LH + (chip ? 40 : 0);
-      const textH = Math.max(noLines.length, itemLines.length, specLines.length, 1) * LH;
-      let rowH = Math.max(textH, etaH);
-      // 가격이 길면(NT$1,300.00) ETA 글자와 겹치지 않게 28px에서 22px까지 줄이고, 그래도 겹치면 다음 줄에
-      let price = null;
-      if (model.showPrice) {
-        const p = r.price === null ? 'TBC' : fmtPrice(r.price, model.currency);
-        const room = col.priceR - (col.eta + measure(etaText, etaF) + 16);
-        let pf = PRICE_F;
-        for (let s = 26; s >= 22 && measure(p, pf) > room; s -= 2) pf = font(700, s);
-        const below = measure(p, pf) > room;
-        price = { p, pf, y: top + 28 + (below ? (chip ? 40 : LH) : 0) };
-        if (below) rowH = Math.max(rowH, (chip ? 40 : LH) + LH);
-      }
-
-      noLines.forEach((s, i) => text(col.no, top + 28 + i * LH, s, noF, C.text));
-      itemLines.forEach((s, i) => text(col.item, top + 28 + i * LH, s, ITEM_F, C.text));
-      text(col.ship, top + 28, r.ship || '—', BODY_F, C.text);
-      specLines.forEach((s, i) => text(col.spec, top + 28 + i * LH, s, BODY_F, C.text));
-      text(col.eta, top + 28, etaText, etaF, r.eta ? C.text : C.tbc);
-      if (chip) {
-        const cf = font(700, 20);
-        const cw = measure('TBC', cf) + 20;
-        rect(col.eta, top + LH + 4, cw, 30, C.tbcBg, 8);
-        text(col.eta + 10, top + LH + 26, 'TBC', cf, C.tbc);
-      }
-      if (price) text(col.priceR, price.y, price.p, price.pf, r.price === null ? C.tbc : C.text, 'right');
-      y = top + rowH + 22;
-      rect(PX, y, W - PX * 2, 2, C.line);
-      y += 2;
+  for (const r of rows) {
+    const top = y + 22;
+    // 인보이스 번호는 한 줄이 되도록 24px에서 20px까지 줄여 보고, 그래도 길면 하이픈 뒤에서 줄바꿈
+    const noStr = noStrOf(r);
+    let noF = NO_F;
+    for (let s = 22; s >= 20 && measure(noStr, noF) > width.no; s -= 2) noF = font(700, s);
+    const noLines = wrapText(noStr, noF, width.no, measure);
+    const itemLines = wrapText(r.fruit || '—', ITEM_F, width.item, measure);
+    const specLines = wrapText(r.spec || '—', BODY_F, width.spec, measure);
+    // 가격: 칸보다 길면 28px에서 22px까지 줄이고, 그래도 길면 '/' 뒤에서 줄바꿈
+    let pf = PRICE_F;
+    let priceLines = [];
+    if (model.showPrice) {
+      const p = priceOf(r);
+      for (let s = 26; s >= 22 && measure(p, pf) > width.price; s -= 2) pf = font(700, s);
+      priceLines = wrapText(p, pf, width.price, measure);
     }
+    const etaText = etaOf(r);
+    const chip = r.eta && r.status === 'tbc';
+    const etaH = LH + (chip ? 40 : 0);
+    const textH = Math.max(noLines.length, itemLines.length, specLines.length, priceLines.length, 1) * LH;
+    const rowH = Math.max(textH, etaH);
+
+    noLines.forEach((s, i) => text(col.no, top + 28 + i * LH, s, noF, C.text));
+    itemLines.forEach((s, i) => text(col.item, top + 28 + i * LH, s, ITEM_F, C.text));
+    text(col.ship, top + 28, r.ship || '—', BODY_F, C.text);
+    specLines.forEach((s, i) => text(col.spec, top + 28 + i * LH, s, BODY_F, C.text));
+    priceLines.forEach((s, i) => text(col.priceR, top + 28 + i * LH, s, pf, r.price === null ? C.tbc : C.text, 'right'));
+    text(col.eta, top + 28, etaText, r.eta ? BODY_F : font(700, 28), r.eta ? C.text : C.tbc);
+    if (chip) {
+      const cf = font(700, 20);
+      const cw = measure('TBC', cf) + 20;
+      rect(col.eta, top + LH + 4, cw, 30, C.tbcBg, 8);
+      text(col.eta + 10, top + LH + 26, 'TBC', cf, C.tbc);
+    }
+    y = top + rowH + 22;
+    rect(PX, y, W - PX * 2, 2, C.line);
+    y += 2;
   }
   if (!model.rows.length) {
     y += 40;
@@ -240,15 +267,8 @@ export function layoutJpg(model, measure) {
     y += 60;
   }
 
-  // ── 맨 아래 ─────────────────────────────
-  y += 40;
-  rect(PX, y, W - PX * 2, 2, C.border);
-  y += 26;
-  const notes = [model.priceLine, 'TBC = to be confirmed'].filter(Boolean);
-  notes.forEach((s, i) => text(PX, y + 30 + i * 36, s, font(400, 24), C.muted));
-  const footY = y + 30 + (notes.length - 1) * 36;
-  if (h.exporter) text(W - PX, footY, `${h.exporter} · Korea`, font(700, 24), C.text, 'right');
-  y = footY + 56;
+  // 맨 아래 줄(Prices in USD per carton, TBC = to be confirmed, 회사명 · Korea)은 두지 않는다(2026-10-16 사용자 요청)
+  y += 56;
 
   return { width: W, height: Math.max(JPG_MIN_HEIGHT, Math.ceil(y)), ops };
 }

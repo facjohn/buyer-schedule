@@ -98,7 +98,7 @@ docs/mockups/html/ 에는 같은 화면을 정적 HTML로 찍어 둔 파일이 �
 - 한 JPG에는 한 회사만. 기간 안에 Hyun Nong Fresh와 Royal 물량이 섞이면 미리보기 위에 회사 버튼을 두고 회사별로 따로 만든다
 - 맨 위: 회사명(그 JPG에 담긴 줄의 회사, 초록, 자간 넓게) · 제목 "Kingo Schedule"(바이어 영어 이름 + Schedule, 60px, 길면 40px까지 줄이고 그래도 길면 두 줄). 영어 이름이 없으면 "Shipping Schedule". 오른쪽 바이어·나라·From·Updated 줄은 없음(2026-10-16 사용자 요청)
 - 표 머리글 22px, 표 글자 28px. 월 제목 없이 ETA 순(No. 6·7이 날짜로 읽히지 않게). ETA 미정 줄은 맨 아래, ETA 자리에 TBC(#A15C07). 올해가 아닌 ETA는 "Jan 5, 2027"
-- 열 시작(x): No. 76 · Item 266 · Shipping 446 · Spec 556 · ETA 736 · Price 오른쪽 끝 1004. No.는 인보이스 번호(KINGO-26-01)가 한 줄에 들어가게 176px이고, 길면 24px에서 20px까지 줄인 뒤에도 넘치면 하이픈 뒤에서 줄을 바꾼다
+- 열 순서: No. · Item · Shipping · Spec · Price · ETA (ETA 맨 오른쪽, 2026-10-16). 칸 폭은 글자에 맞춘다: No.는 번호 폭(최대 176px, 길면 24→20px로 줄이고 하이픈 뒤 줄바꿈), Shipping·ETA는 가장 긴 글자 폭, Item(최대 230)과 Price(최대 260, 오른쪽 맞춤)는 한 줄에 들어가는 폭을 먼저 주고 남는 폭은 모두 Spec에. Spec이 160px보다 좁아지면 Item·Price를 줄인다. 가격이 칸보다 길면 28→22px로 줄이고 그래도 길면 '/' 뒤에서 줄바꿈
 - 미정 건은 ETA 아래에 TBC 칩(#A15C07 글자, #FCF1E3 바탕)
-- 맨 아래: 가격 줄(바이어 탭 currency, priceUnit, priceTerm으로 "Prices in USD per carton, FOB") / TBC = to be confirmed, 오른쪽에 회사명 · Korea
+- 맨 아래 줄 없음(가격 기준·TBC 설명·회사명 · Korea를 뺌, 2026-10-16 사용자 요청)
 - 바이어가 표시를 끄면 Price 열과 가격 줄이 빠짐

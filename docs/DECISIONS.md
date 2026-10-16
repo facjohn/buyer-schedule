@@ -37,7 +37,7 @@
 
 ### 6. 가격 기준
 
-- 답: 추천값. 바이어 탭에서 바이어마다 통화, 가격 단위(carton, box, kg 등), 가격 조건(FOB/CIF 등)을 정한다. 처음 값은 USD, carton, FOB. JPG 맨 아래에 "Prices in USD per carton, FOB"처럼 한 번 찍는다. 산지가와 작업비는 원화다.
+- 답: 추천값. 바이어 탭에서 바이어마다 통화, 가격 단위(carton, box, kg 등), 가격 조건(FOB/CIF 등)을 정한다. 처음 값은 USD, carton, FOB. JPG 맨 아래에 "Prices in USD per carton, FOB"처럼 한 번 찍었으나, 2026-10-16 사용자 요청으로 맨 아래 줄은 뺐다(통화 기호만 가격에 붙음). 산지가와 작업비는 원화다.
 
 ### 7. ETA의 뜻
 
