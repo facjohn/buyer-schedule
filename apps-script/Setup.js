@@ -4,7 +4,8 @@
  */
 
 // 시트 드롭다운의 처음 값. 시트의 데이터 확인 규칙에서 바꿀 수 있다. 앱과 JPG는 이 목록이 아니라 줄과 바이어 탭의 값을 쓴다.
-var DEFAULT_EXPORTERS = ['Hyun Nong Fresh', 'Royal'];
+// Royal은 2026-10-19 사용자 요청으로 지웠다(회사는 Hyun Nong Fresh 하나).
+var DEFAULT_EXPORTERS = ['Hyun Nong Fresh'];
 
 // 품목 첫 등록값 (CLAUDE.md 표기 규칙). 시즌 시작 월은 사람이 채운다.
 var DEFAULT_FRUITS = [
@@ -274,7 +275,7 @@ var SAMPLE_BUYERS = [
   ['바이어 A', 'Buyer A', '대만', 'Taiwan', 'Hyun Nong Fresh'],
   ['바이어 B', 'Buyer B', '말레이시아', 'Malaysia', 'Hyun Nong Fresh'],
   ['바이어 C', 'Buyer C', '인도네시아', 'Indonesia', 'Hyun Nong Fresh'],
-  ['바이어 D', 'Buyer D', '홍콩', 'Hong Kong', 'Royal'],
+  ['바이어 D', 'Buyer D', '홍콩', 'Hong Kong', 'Hyun Nong Fresh'],
   ['바이어 E', 'Buyer E', '미국', 'USA', 'Hyun Nong Fresh'],
   ['바이어 F', 'Buyer F', '베트남', 'Vietnam', 'Hyun Nong Fresh']
 ];

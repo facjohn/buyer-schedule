@@ -1,5 +1,5 @@
 // 바이어 더하기·고치기(2026-10-19 사용자 요청). 시트 바이어 탭에 저장된다.
-// 칸은 이름, 영어 이름(JPG 제목), 나라, 통화, 회사만. 가격 조건(FOB/CIF)은 2026-10-19 사용자 요청으로 뺐다(오퍼 가격이라 나눌 필요 없음).
+// 칸은 이름, 영어 이름(JPG 제목), 나라, 통화, 회사만(회사는 고를 회사가 둘 이상일 때만 보임). 가격 조건(FOB/CIF)은 2026-10-19 사용자 요청으로 뺐다(오퍼 가격이라 나눌 필요 없음).
 // 나머지(나라 영어, 가격 단위, 가격 조건, 순서, 숨김)는 시트에 그대로 남고 앱은 건드리지 않는다.
 import { useEffect, useRef, useState } from 'react';
 import { back, backTo, buyerPath, replace, setLeaveGuard } from '../router.js';
@@ -7,7 +7,8 @@ import { Field, Segmented, SelectField, TextField } from '../components/Controls
 import { IconAlert, IconClose } from '../components/icons.jsx';
 
 const CURRENCIES = ['USD', 'SGD', 'HKD', 'TWD', 'MYR', 'THB', 'VND', 'IDR', 'PHP', 'CAD', 'AUD', 'NZD', 'EUR', 'GBP', 'JPY', 'CNY', 'KRW'];
-const EXPORTERS = ['Hyun Nong Fresh', 'Royal'];
+// 회사는 Hyun Nong Fresh 하나(Royal은 2026-10-19 사용자 요청으로 지움). 고를 회사가 하나뿐이면 회사 칸을 숨긴다.
+const EXPORTERS = ['Hyun Nong Fresh'];
 
 /** 지금 바이어들이 가장 많이 쓰는 값(새 바이어의 처음 값) */
 function mostUsed(buyers, key, fallback) {
@@ -25,7 +26,8 @@ export default function BuyerForm({ data, buyerName, onSave }) {
   const src = editing ? data.buyers.find((b) => b.name === buyerName) : null;
   const [init] = useState(() => (src ? {
     name: src.name, nameEn: src.nameEn || '', country: src.country || '',
-    currency: src.currency || 'USD', exporter: src.exporter || ''
+    // 회사가 빈 바이어(시트에서 비워 둔 경우)는 첫 회사로 채운다. 회사 칸이 숨겨져 있어도 저장하면 채워진다.
+    currency: src.currency || 'USD', exporter: src.exporter || EXPORTERS[0]
   } : {
     name: '', nameEn: '', country: '',
     currency: mostUsed(data.buyers, 'currency', 'USD'),
@@ -131,9 +133,11 @@ export default function BuyerForm({ data, buyerName, onSave }) {
             options={currencies.map((c) => ({ value: c, label: c }))} />
         </Field>
 
-        <Field label="회사" hint="JPG 맨 위">
-          <Segmented options={exporters} value={form.exporter} onChange={(v) => set({ exporter: v })} label="회사" />
-        </Field>
+        {exporters.length > 1 && (
+          <Field label="회사" hint="JPG 맨 위">
+            <Segmented options={exporters} value={form.exporter} onChange={(v) => set({ exporter: v })} label="회사" />
+          </Field>
+        )}
 
         {error && <p className="form-error" role="alert">{error}</p>}
       </div>
