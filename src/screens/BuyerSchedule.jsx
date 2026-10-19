@@ -67,7 +67,8 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
 
       <div className="filters">
         <Chip on={period === 'past'} onClick={() => setPeriod(period === 'past' ? 'future' : 'past')}>지난 일정</Chip>
-        {fruits.length > 1 && (
+        {/* 과일이 한 가지여도 보인다(2026-10-19 사용자 요청: 프루티시마처럼 샤인머스캣만 있어도) */}
+        {fruits.length > 0 && (
           <>
             <span className="chip-sep" aria-hidden="true" />
             <Chip on={!activeFruit} onClick={() => setFruit('')}>전체</Chip>
