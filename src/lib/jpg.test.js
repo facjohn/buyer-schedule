@@ -193,6 +193,20 @@ describe('JPG 그리기', () => {
     expect(j.warnings.join(' ')).toContain('26.5 협의');
   });
 
+  it('No. 순으로, ETA 미정(TBC) 줄도 제 번호 자리에 (2026-10-19 사용자 요청)', () => {
+    const d = { ...data, rows: [
+      { ...data.rows[1], id: 'n7', no: 7, noYear: 2026, eta: '2026-10-23' },
+      { ...data.rows[1], id: 'n8', no: 8, noYear: 2026, eta: '2026-10-28' },
+      { ...data.rows[1], id: 'n10', no: 10, noYear: 2026, eta: '2026-11-15' },
+      { ...data.rows[1], id: 'n9', no: 9, noYear: 2026, eta: '' }
+    ] };
+    const t = drawnTexts(buildJpg(d, '킹고').model);
+    const order = ['7', '8', '9', '10'].map((n) => t.indexOf(n));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(buildJpg(d, '킹고').model.rows.map((r) => r.no)).toEqual([7, 8, 9, 10]);
+  });
+
   it('바이어가를 빼면 가격과 가격 줄이 없다', () => {
     const t = drawnTexts(buildJpg(data, '킹고', { showPrice: false }).model).join('\n');
     expect(t).not.toContain('$');

@@ -3,7 +3,7 @@
 // 모델의 줄은 toBuyerRow(허용한 칸 7개)로만 만든다(절대 규칙 1). 산지가·작업비·산지·상차일·수량·메모는 모델에 없다.
 import { fmtEn, fmtEnLong } from './dates.js';
 import { fmtPrice } from './money.js';
-import { sortRows } from './schedule.js';
+import { sortByNo } from './schedule.js';
 import { buyerPrice, fruitEnMap, toBuyerRow } from './buyerView.js';
 
 export const JPG_WIDTH = 1080;
@@ -18,9 +18,12 @@ const C = {
   head: '#F1F3F2', tbc: '#A15C07', tbcBg: '#FCF1E3', white: '#FFFFFF'
 };
 
-/** 오늘 이후(ETA가 오늘이거나 그 뒤)와 ETA 미정 줄. JPG에 담을 원본 줄(내부 칸 포함)이라 화면 밖으로 내보내지 않는다. */
+/**
+ * 오늘 이후(ETA가 오늘이거나 그 뒤)와 ETA 미정 줄을 No. 순으로(2026-10-19 사용자 요청: 바이어 화면처럼 No. 대로, ETA 미정도 제 번호 자리에).
+ * JPG에 담을 원본 줄(내부 칸 포함)이라 화면 밖으로 내보내지 않는다. 번호 해(noYear)로 줄 세운 다음 허용 칸만 담는다.
+ */
 export function upcomingRowsOf(data, buyerName) {
-  return sortRows((data.rows || []).filter((r) => r.buyer === buyerName && (!r.eta || r.eta >= data.today)));
+  return sortByNo((data.rows || []).filter((r) => r.buyer === buyerName && (!r.eta || r.eta >= data.today)));
 }
 
 /**
@@ -162,7 +165,7 @@ export function layoutJpg(model, measure) {
   const PRICE_F = font(700, 28);
   const LH = 36;
   const GAP = 32;
-  const rows = [...model.rows.filter((r) => r.eta), ...model.rows.filter((r) => !r.eta)];
+  const rows = model.rows; // buildJpg가 No. 순으로 담아 준 그대로(ETA 미정도 제 번호 자리에)
   const year = String(h.date || '').slice(0, 4);
   const noStrOf = (r) => (r.no === null || r.no === undefined ? '' : String(r.no));
   // 올해가 아닌 ETA는 해까지(Jan 5, 2027)
@@ -220,7 +223,7 @@ export function layoutJpg(model, measure) {
   text(col.eta, y + 38, 'ETA', hf, C.text2);
   y += 60;
 
-  // ── 줄: ETA 순, ETA 미정은 맨 뒤 ─────────
+  // ── 줄: No. 순(ETA 미정도 제 번호 자리에) ─────────
   y += 8;
   for (const r of rows) {
     const top = y + 22;
