@@ -1,5 +1,5 @@
-// 스케줄 한 건. 윗줄 No. · 과일 · 운송 · 스펙 · 산지(흐리게),
-// 아랫줄 상차일·ETA(위아래로, 2026-10-16 사용자 요청) · 바이어가 · 산지가(작업비는 그 아래 작게). 정렬과 월 묶음은 ETA 기준.
+// 스케줄 한 건. 윗줄 No. · 과일 · 운송 · 스펙 · 산지(검은 바탕 흰 글자 칩, 2026-10-19 사용자 요청),
+// 아랫줄 상차일·ETA(위아래로, 2026-10-16 사용자 요청, ETA 미정 버튼으로 저장한 줄은 날짜 대신 "미정") · 바이어가 · 산지가(작업비는 그 아래 작게). 정렬과 월 묶음은 ETA 기준.
 import { fmtKo } from '../lib/dates.js';
 import { fmtPrice, fmtWon } from '../lib/money.js';
 import { useLongPress } from '../hooks/useLongPress.js';
@@ -38,7 +38,7 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
         <span className="fruit">{row.fruit || '과일 없음'}</span>
         {row.ship && <span className="ship-chip">{row.ship}</span>}
         <span className="spec">{row.specKo}</span>
-        {row.origin && <span className="origin">· {row.origin}</span>}
+        {row.origin && <span className="origin-chip">{row.origin}</span>}
       </div>
       <div className="srow-eta srow-dates">
         <span className="dlabel">상차</span>
@@ -50,7 +50,7 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
           {row.eta ? (
             <span className="eta">{fmtKo(row.eta)}</span>
           ) : (
-            <span className="chip-tbc">ETA 미정</span>
+            <span className="chip-tbc">미정</span>
           )}
         </span>
       </div>

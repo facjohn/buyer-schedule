@@ -65,7 +65,7 @@ export default function Home({ data, fetchedAt, loading }) {
                     <div className="tile-label">
                       다음 ETA
                     </div>
-                    <div className="tile-date">{c.next.eta ? fmtKo(c.next.eta) : 'ETA 미정'}</div>
+                    <div className="tile-date">{c.next.eta ? fmtKo(c.next.eta) : '미정'}</div>
                     <div className="tile-what">{c.next.fruits}{c.next.ship ? ` · ${c.next.ship}` : ''}</div>
                   </>
                 ) : (
