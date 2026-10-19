@@ -99,6 +99,15 @@ describe('바이어 스케줄 목록: No. 순 (2026-10-19 사용자 요청)', ()
   });
 });
 
+describe('과일 버튼 (2026-10-19 사용자 요청)', () => {
+  it('줄에 있는 과일만, 품목 탭 순서로(품목 탭에 없는 과일은 뒤)', async () => {
+    const { fruitsInOrder } = await import('./schedule.js');
+    const tab = [{ fruitKo: '배' }, { fruitKo: '샤인머스캣' }, { fruitKo: '단감' }, { fruitKo: '키위' }];
+    const rows = [{ fruit: '단감' }, { fruit: '배' }, { fruit: '신고' }, { fruit: '배' }, { fruit: '' }];
+    expect(fruitsInOrder(rows, tab)).toEqual(['배', '단감', '신고']);
+  });
+});
+
 describe('JPG용 허용 칸 (규칙 1)', () => {
   const row = {
     id: 'x', buyer: '바이어 A', no: 4, noYear: 2026, fruit: '신고배', ship: '항공', specKo: '15kg 18-24',

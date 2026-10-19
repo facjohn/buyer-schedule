@@ -110,6 +110,15 @@ export function groupInNoOrder(rows, today) {
   return groups;
 }
 
+/** 줄에 있는 과일을 품목 탭 순서로(품목 탭에 없는 과일은 뒤에 가나다순). 바이어 스케줄의 과일 버튼용 */
+export function fruitsInOrder(rows, fruitsTab) {
+  const present = new Set(rows.map((r) => r.fruit).filter(Boolean));
+  const order = (fruitsTab || []).map((f) => f.fruitKo);
+  const known = order.filter((f) => present.has(f));
+  const extra = [...present].filter((f) => !order.includes(f)).sort((a, b) => a.localeCompare(b, 'ko'));
+  return [...known, ...extra];
+}
+
 /** 앞으로의 줄: ETA가 오늘 이후이거나 ETA 미정 */
 function isUpcoming(r, today) {
   return !r.eta || r.eta >= today;
