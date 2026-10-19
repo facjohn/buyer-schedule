@@ -1,12 +1,12 @@
 // 바이어 더하기·고치기(2026-10-19 사용자 요청). 시트 바이어 탭에 저장된다.
-// 칸은 이름, 영어 이름(JPG 제목), 나라, 통화, 가격 조건, 회사만. 나머지(나라 영어, 가격 단위, 순서, 숨김)는 시트에서.
+// 칸은 이름, 영어 이름(JPG 제목), 나라, 통화, 회사만. 가격 조건(FOB/CIF)은 2026-10-19 사용자 요청으로 뺐다(오퍼 가격이라 나눌 필요 없음).
+// 나머지(나라 영어, 가격 단위, 가격 조건, 순서, 숨김)는 시트에 그대로 남고 앱은 건드리지 않는다.
 import { useEffect, useRef, useState } from 'react';
 import { back, backTo, buyerPath, replace, setLeaveGuard } from '../router.js';
 import { Field, Segmented, SelectField, TextField } from '../components/Controls.jsx';
 import { IconAlert, IconClose } from '../components/icons.jsx';
 
 const CURRENCIES = ['USD', 'SGD', 'HKD', 'TWD', 'MYR', 'THB', 'VND', 'IDR', 'PHP', 'CAD', 'AUD', 'NZD', 'EUR', 'GBP', 'JPY', 'CNY', 'KRW'];
-const TERMS = ['FOB', 'CIF', 'CFR'];
 const EXPORTERS = ['Hyun Nong Fresh', 'Royal'];
 
 /** 지금 바이어들이 가장 많이 쓰는 값(새 바이어의 처음 값) */
@@ -25,11 +25,10 @@ export default function BuyerForm({ data, buyerName, onSave }) {
   const src = editing ? data.buyers.find((b) => b.name === buyerName) : null;
   const [init] = useState(() => (src ? {
     name: src.name, nameEn: src.nameEn || '', country: src.country || '',
-    currency: src.currency || 'USD', priceTerm: src.priceTerm || 'FOB', exporter: src.exporter || ''
+    currency: src.currency || 'USD', exporter: src.exporter || ''
   } : {
     name: '', nameEn: '', country: '',
     currency: mostUsed(data.buyers, 'currency', 'USD'),
-    priceTerm: mostUsed(data.buyers, 'priceTerm', 'FOB'),
     exporter: mostUsed(data.buyers, 'exporter', EXPORTERS[0])
   }));
   const [form, setForm] = useState(init);
@@ -93,7 +92,6 @@ export default function BuyerForm({ data, buyerName, onSave }) {
   }
 
   const currencies = uniq([form.currency, ...data.buyers.map((b) => b.currency), ...CURRENCIES]);
-  const terms = uniq([...TERMS, form.priceTerm]);
   const exporters = uniq([...EXPORTERS, ...data.buyers.map((b) => b.exporter), form.exporter]);
   const countries = uniq(data.buyers.map((b) => b.country));
 
@@ -128,15 +126,10 @@ export default function BuyerForm({ data, buyerName, onSave }) {
           </datalist>
         </Field>
 
-        <div className="row-2">
-          <Field label="통화" hint="바이어가">
-            <SelectField value={form.currency} onChange={(v) => set({ currency: v })} label="통화"
-              options={currencies.map((c) => ({ value: c, label: c }))} />
-          </Field>
-          <Field label="가격 조건">
-            <Segmented options={terms} value={form.priceTerm} onChange={(v) => set({ priceTerm: v })} label="가격 조건" />
-          </Field>
-        </div>
+        <Field label="통화" hint="바이어가">
+          <SelectField value={form.currency} onChange={(v) => set({ currency: v })} label="통화"
+            options={currencies.map((c) => ({ value: c, label: c }))} />
+        </Field>
 
         <Field label="회사" hint="JPG 맨 위">
           <Segmented options={exporters} value={form.exporter} onChange={(v) => set({ exporter: v })} label="회사" />

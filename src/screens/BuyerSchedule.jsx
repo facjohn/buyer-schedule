@@ -47,7 +47,8 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
     setConfirmDelete(false);
   };
 
-  const sub = [buyer.country, buyer.currency, buyer.priceTerm].filter(Boolean).join(' · ');
+  // 가격 조건(FOB/CIF)은 보이지 않는다(2026-10-19 사용자 요청)
+  const sub = [buyer.country, buyer.currency].filter(Boolean).join(' · ');
 
   return (
     <div className="screen page with-bottom">

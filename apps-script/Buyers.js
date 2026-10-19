@@ -4,10 +4,11 @@
  * - original이 있으면 그 바이어의 바뀐 칸만 고친다. 이름을 바꾸면 스케줄 탭에서 그 바이어 줄(지운 줄 포함)의
  *   바이어 칸도 모두 새 이름으로 바꾼다(일정이 바이어와 떨어지지 않게).
  * - 이름이 이미 있으면(숨긴 바이어 포함, 앞뒤 공백·대소문자 무시) 거절한다.
- * 고치는 칸: 이름, 영어 이름, 나라, 통화, 가격 조건, 기본 회사. 나머지(나라 영어, 가격 단위, 순서, 숨김)는 시트에서.
+ * 고치는 칸: 이름, 영어 이름, 나라, 통화, 기본 회사. 나머지(나라 영어, 가격 단위, 가격 조건, 순서, 숨김)는 시트에서.
+ * 가격 조건은 2026-10-19 사용자 요청으로 앱에서 뺐다(시트의 값은 건드리지 않음).
  */
 
-var BUYER_EDIT_FIELDS = ['name', 'nameEn', 'country', 'currency', 'priceTerm', 'exporter'];
+var BUYER_EDIT_FIELDS = ['name', 'nameEn', 'country', 'currency', 'exporter'];
 
 function buyerKey_(s) {
   return str_(s).replace(/\s+/g, ' ').toLowerCase();
@@ -21,20 +22,18 @@ function cleanBuyer_(b) {
     nameEn: str_(b.nameEn).replace(/\s+/g, ' '),
     country: str_(b.country),
     currency: str_(b.currency).toUpperCase() || 'USD',
-    priceTerm: str_(b.priceTerm).toUpperCase(),
     exporter: str_(b.exporter)
   };
   if (!out.name) throw new Error('바이어 이름을 넣어 주세요.');
   if (out.name.length > 40 || out.name.indexOf('|') >= 0) throw new Error('바이어 이름이 너무 길거나 쓸 수 없는 글자(|)가 있어요.');
   if (out.nameEn.length > 60 || out.country.length > 40 || out.exporter.length > 60) throw new Error('글자가 너무 길어요.');
   if (!/^[A-Z]{3}$/.test(out.currency)) throw new Error('통화는 USD처럼 영어 세 글자예요.');
-  if (out.priceTerm && !/^[A-Z]{2,6}$/.test(out.priceTerm)) throw new Error('가격 조건은 FOB·CIF처럼 영어로 써 주세요.');
   return out;
 }
 
 /** 시트에 쓸 값. 글자 칸은 앞에 '를 붙여 시트가 숫자·날짜로 바꾸지 않게 */
 function buyerCell_(field, value) {
-  if (field === 'currency' || field === 'priceTerm') return value;
+  if (field === 'currency') return value;
   return value ? "'" + value : '';
 }
 

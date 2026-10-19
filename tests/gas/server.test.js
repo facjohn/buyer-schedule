@@ -605,10 +605,10 @@ describe('바이어 더하기·고치기 (2026-10-19)', () => {
 
   it('새 바이어는 바이어 탭 맨 뒤 순서로 더하고, 바로 목록에 나온다', () => {
     const w = makeWorldWithOrder();
-    const res = add(w, { name: ' 새 바이어 ', nameEn: 'New Buyer', country: '대만', currency: 'usd', priceTerm: 'cif', exporter: 'Royal' });
+    const res = add(w, { name: ' 새 바이어 ', nameEn: 'New Buyer', country: '대만', currency: 'usd', exporter: 'Royal' });
     expect(res).toMatchObject({ ok: true, name: '새 바이어', added: true });
     const row = w.read('buyers').find((b) => b.name === '새 바이어');
-    expect(row).toMatchObject({ nameEn: 'New Buyer', country: '대만', currency: 'USD', priceTerm: 'CIF', exporter: 'Royal', priceUnit: 'carton', sortOrder: 3 });
+    expect(row).toMatchObject({ nameEn: 'New Buyer', country: '대만', currency: 'USD', priceTerm: '', exporter: 'Royal', priceUnit: 'carton', sortOrder: 3 });
     const list = w.call({ action: 'list', code: CODE_1 });
     expect(list.buyers.map((b) => b.name)).toContain('새 바이어');
   });
@@ -634,11 +634,12 @@ describe('바이어 더하기·고치기 (2026-10-19)', () => {
 
   it('고치면 바뀐 칸만 쓰고, 이름을 바꾸면 그 바이어 스케줄 줄(지운 줄 포함)도 새 이름으로', () => {
     const w = world();
-    const res = add(w, { name: '바이어 에이', nameEn: 'Buyer A', currency: 'USD', priceTerm: 'CIF', exporter: 'Hyun Nong Fresh' }, '바이어 A');
+    w.sheet('buyers').data[1][w.ctx.COLUMNS.buyers.findIndex((c) => c[0] === 'priceTerm')] = 'CIF';
+    const res = add(w, { name: '바이어 에이', nameEn: 'Buyer A', currency: 'USD', exporter: 'Hyun Nong Fresh' }, '바이어 A');
     expect(res).toMatchObject({ ok: true, added: false, renamed: 4 });
     const buyers = w.read('buyers').filter((b) => b.name);
     expect(buyers.map((b) => b.name)).toEqual(['바이어 에이', '바이어 B']);
-    expect(buyers[0].priceTerm).toBe('CIF');
+    expect(buyers[0].priceTerm).toBe('CIF'); // 앱은 가격 조건을 건드리지 않는다(시트 값 그대로)
     const rows = w.read('schedule').filter((r) => r.id);
     expect(rows.filter((r) => r.buyer === '바이어 A')).toHaveLength(0);
     expect(rows.filter((r) => r.buyer === '바이어 에이')).toHaveLength(4);
