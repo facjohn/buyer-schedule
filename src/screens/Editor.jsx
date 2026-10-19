@@ -266,7 +266,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       if (form.buyer !== src.buyer) {
         if (touched.no && noVal) item.no = noVal; // 안 쳤으면 새 바이어의 다음 번호(창구가)
       } else if (noVal && noVal !== origNo) {
-        item.no = noVal; // 있는 번호면 이 줄만 그리로, 없는 번호면 이 선적 번호 바꾸기(창구가)
+        item.no = noVal; // 이 줄만: 있는 번호면 그 선적으로, 없는 번호면 새 번호로(창구가)
       }
       if (!Object.keys(changes).length && !item.no) {
         back(buyerPath(form.buyer));
@@ -326,8 +326,9 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       noHint = match ? `${form.buyer}의 No. ${noVal} 선적으로 옮겨요.`
         : touched.no && noVal ? `${form.buyer}의 새 번호 ${noVal}(으)로 옮겨요.` : `${form.buyer}의 다음 번호로 옮겨요.`;
     } else if (noVal && noVal !== origNo) {
+      // 고치기에서 번호를 바꾸면 이 줄만 바뀐다(같은 번호의 다른 줄은 그대로)
       noHint = match ? `이 줄만 No. ${noVal} 선적으로 옮겨요.`
-        : sameShipmentCount > 1 ? `이 선적의 줄 ${sameShipmentCount}개 번호를 모두 ${noVal}(으)로 바꿔요.`
+        : sameShipmentCount > 1 ? `이 줄만 ${noVal}(으)로 바꿔요. 같은 No. ${origNo}의 다른 ${sameShipmentCount - 1}줄은 그대로예요.`
           : `번호를 ${noVal}(으)로 바꿔요.`;
     }
   } else if (match) {

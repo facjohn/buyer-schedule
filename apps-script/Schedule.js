@@ -359,8 +359,8 @@ function repairIfNeeded_(force) {
  * items: [{ id?, key?, no?, join?: {no, noYear}, changes: {필드: 값} }]
  * - id가 있으면 그 줄의 바뀐 칸만 쓴다.
  * - id가 없으면 새 줄. No.는 join(고른 선적) → no(사람이 쓴 번호, 이미 있는 번호면 그 선적에 더함) → 다음 번호 순.
- * - 고치기에서 no를 다른 번호로 보내면: 그 번호의 선적이 있으면 이 줄만 그리로 옮기고,
- *   없으면 이 선적(같은 No.의 줄 모두)의 번호를 바꾼다(인보이스 번호 고치기).
+ * - 고치기에서 no를 다른 번호로 보내면 이 줄만 바꾼다. 그 번호의 선적이 있으면 그리로 옮기고, 없으면 새 번호.
+ *   같은 번호의 다른 줄은 건드리지 않는다(2026-10-19 사용자 요청: 한 줄을 고쳤는데 먼저 저장한 줄 번호까지 바뀌던 문제).
  */
 function save_(member, items) {
   if (!Array.isArray(items) || !items.length) return { ok: false, error: 'bad_request', message: '저장할 줄이 없어요.' };
@@ -473,7 +473,6 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
   var curYear = toNum_(cur.noYear) || (curNo ? yearOf_(cur.eta) : null);
   var no = curNo;
   var noYear = toNum_(cur.noYear);
-  var others = 0;
 
   if (join || (buyer && buyer !== curBuyer)) {
     // 다른 선적으로 옮기기 / 바이어를 바꾸면 그 바이어의 번호(쓴 번호, 없으면 다음 번호)
@@ -487,17 +486,9 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
       no = there.no;
       noYear = there.noYear;
     } else {
-      // 없는 번호: 이 선적(같은 번호·같은 해의 줄 모두)의 번호를 바꾼다
+      // 없는 번호: 이 줄만 새 번호로(같은 번호였던 다른 줄은 그대로)
       no = typed;
-      noYear = curYear;
-      t.rows.forEach(function (r) {
-        if (r === cur || toBool_(r.deleted) || str_(r.buyer) !== curBuyer || noStr_(r.no) !== curNo) return;
-        if ((toNum_(r.noYear) || yearOf_(r.eta)) !== curYear) return;
-        writeCell_(t, r._row, 'no', noCell_(typed));
-        writeCell_(t, r._row, 'updatedBy', member.name);
-        writeCell_(t, r._row, 'updatedAt', now);
-        others++;
-      });
+      noYear = curYear || yearOf_(eta);
     }
   }
   if (no !== curNo) writes.no = noCell_(no);
@@ -518,7 +509,7 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
   }
 
   return {
-    id: str_(cur.id), no: no ? noCell_(no) : null, noYear: noYear, changed: fields.length + others,
+    id: str_(cur.id), no: no ? noCell_(no) : null, noYear: noYear, changed: fields.length,
     final: {
       fruit: str_(writes.fruit !== undefined ? writes.fruit : cur.fruit),
       specKo: str_(writes.specKo !== undefined ? writes.specKo : cur.specKo),

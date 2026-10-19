@@ -527,7 +527,7 @@ describe('인보이스 번호 (규칙 5: KINGO-26-01 = 바이어-시즌-차수)'
     expect(w.call({ action: 'list', code: CODE_1 }).noNext['바이어 A']).toBe('KINGO-26-02');
   });
 
-  it('고치기에서 없는 번호로 바꾸면 그 선적의 줄 모두 번호가 바뀐다', () => {
+  it('고치기에서 없는 번호로 바꾸면 이 줄만 바뀌고, 같은 번호의 다른 줄은 그대로 (2026-10-19)', () => {
     const w = world();
     const a = save(w, { no: 'KINGO-26-01', changes: base() }).saved[0];
     const b = save(w, { no: 'KINGO-26-01', changes: { ...base(), specKo: '15kg 18-24', specEn: '15kg, 18-24' } }).saved[0];
@@ -535,8 +535,21 @@ describe('인보이스 번호 (규칙 5: KINGO-26-01 = 바이어-시즌-차수)'
     expect(res.ok).toBe(true);
     const rows = w.read('schedule');
     expect(rows.find((r) => r.id === a.id).no).toBe('KINGO-26-11');
-    expect(rows.find((r) => r.id === b.id).no).toBe('KINGO-26-11');
-    expect(rows.find((r) => r.id === b.id).updatedBy).toBe('박바이어');
+    expect(rows.find((r) => r.id === b.id).no).toBe('KINGO-26-01');
+  });
+
+  it('숫자 번호: 10으로 저장한 두 줄 중 하나를 11로 고쳐도 먼저 저장한 줄은 10 그대로 (2026-10-19 사용자 신고)', () => {
+    const w = world();
+    const base2 = { ...base(), specKo: '5kg 7과' };
+    const a = save(w, { no: '10', changes: base2 }).saved[0];
+    const b = save(w, { no: '10', changes: { ...base2, specKo: '15kg 18-24', specEn: '15kg, 18-24' } }).saved[0];
+    expect(w.call({ action: 'save', code: CODE_1, items: [{ id: b.id, no: '11', changes: {} }] }).ok).toBe(true);
+    const rows = w.read('schedule');
+    expect(rows.find((r) => r.id === a.id).no).toBe(10);
+    expect(rows.find((r) => r.id === b.id).no).toBe(11);
+    // 다른 칸을 고쳐도 번호는 그대로
+    expect(w.call({ action: 'save', code: CODE_1, items: [{ id: a.id, changes: { price: 20 } }] }).ok).toBe(true);
+    expect(w.read('schedule').find((r) => r.id === a.id).no).toBe(10);
   });
 
   it('고치기에서 이미 있는 번호로 바꾸면 이 줄만 그 선적으로 옮긴다', () => {
