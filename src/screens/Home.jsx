@@ -75,11 +75,11 @@ export default function Home({ data, fetchedAt, loading }) {
             </button>
           );
         })}
-        {!shown.length && (
-          <div className="empty-box tiles-empty">
-            {data.buyers.length ? '맞는 바이어가 없어요.' : '바이어 탭에 바이어를 먼저 넣어 주세요.'}
-          </div>
-        )}
+        {!shown.length && q && <div className="empty-box tiles-empty">맞는 바이어가 없어요.</div>}
+        <button type="button" className="tile tile-add" onClick={() => navigate('/buyer/new')}>
+          <IconPlus size={28} />
+          <span>바이어 추가</span>
+        </button>
       </div>
     </div>
   );

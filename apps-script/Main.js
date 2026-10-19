@@ -34,6 +34,7 @@ function route_(req, member) {
     case 'save': return save_(member, req.items);
     case 'remove': return remove_(member, req.ids);
     case 'prices': return prices_(member, req.fruit);
+    case 'saveBuyer': return saveBuyer_(member, req.buyer, req.original);
     default: return { ok: false, error: 'bad_action' };
   }
 }

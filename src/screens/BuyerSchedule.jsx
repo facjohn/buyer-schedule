@@ -7,7 +7,7 @@ import { navigate, back } from '../router.js';
 import ScheduleRow, { TableHead } from '../components/ScheduleRow.jsx';
 import { ActionSheet } from '../components/Sheet.jsx';
 import { Chip, SelectField } from '../components/Controls.jsx';
-import { IconBack, IconCopy, IconImage, IconPlus, IconTrash } from '../components/icons.jsx';
+import { IconBack, IconCopy, IconEdit, IconImage, IconPlus, IconTrash } from '../components/icons.jsx';
 
 function periodShows(period, eta, today) {
   if (period === 'past') return eta < today;
@@ -59,6 +59,10 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
           <h1>{buyerName}</h1>
           {sub && <div className="sub">{sub}</div>}
         </div>
+        <button type="button" className="icon-btn" aria-label="바이어 고치기"
+          onClick={() => navigate('/buyer/edit/' + encodeURIComponent(buyerName))}>
+          <IconEdit size={22} />
+        </button>
       </header>
 
       <div className="filters">

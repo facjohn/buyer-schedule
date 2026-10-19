@@ -4,6 +4,8 @@
 //   #/new?buyer=  새 줄
 //   #/edit/id     고치기
 //   #/dup/id      복제(같은 컨테이너에 추가)
+//   #/buyer/new   바이어 추가
+//   #/buyer/edit/바이어  바이어 고치기
 import { useEffect, useState } from 'react';
 import { takeCodeOnNavigate } from './lib/link.js';
 
@@ -30,6 +32,7 @@ function notify() {
 // 입력 중인 화면이 '나가기 전에 확인'을 걸어 둘 수 있다(뒤로 가기 몸짓이나 안드로이드 뒤로 버튼).
 let guard = null;
 let skipGuard = false;
+let replaceAfterBack = null; // backTo: 뒤로 간 다음 그 화면을 이 주소로 바꾼다
 let last = { state: window.history.state, hash: window.location.hash };
 
 function remember() {
@@ -49,6 +52,11 @@ function onPop() {
     return;
   }
   skipGuard = false;
+  if (replaceAfterBack) {
+    const path = replaceAfterBack;
+    replaceAfterBack = null;
+    window.history.replaceState({ depth: depth() }, '', '#' + path);
+  }
   remember();
   notify();
 }
@@ -91,6 +99,17 @@ export function back(fallback = '/') {
     window.history.back();
   } else {
     replace(fallback);
+  }
+}
+
+/** 뒤로 가되, 돌아간 화면을 path로 바꾼다(바이어 이름을 바꾼 뒤 옛 이름 화면이 남지 않게) */
+export function backTo(path) {
+  if (depth() > 0) {
+    skipGuard = true;
+    replaceAfterBack = path;
+    window.history.back();
+  } else {
+    replace(path);
   }
 }
 

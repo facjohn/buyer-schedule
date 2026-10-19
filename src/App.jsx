@@ -10,6 +10,7 @@ import Home from './screens/Home.jsx';
 import BuyerSchedule from './screens/BuyerSchedule.jsx';
 import Editor from './screens/Editor.jsx';
 import JpgPreview from './screens/JpgPreview.jsx';
+import BuyerForm from './screens/BuyerForm.jsx';
 
 const FOCUS_MS = 15000;
 
@@ -74,6 +75,20 @@ export default function App() {
     }
   }, [code, refresh, showToast, onAuthFail]);
 
+  // 바이어 더하기·고치기. 성공하면 true, 실패하면 알림 글자
+  const saveBuyer = useCallback(async (buyer, original) => {
+    try {
+      const res = await call(code, 'saveBuyer', { buyer, original });
+      await refresh({ fresh: true });
+      showToast(res.added ? `바이어를 더했어요 · ${res.name}`
+        : res.renamed ? `바이어를 고쳤어요 · 스케줄 ${res.renamed}줄도 새 이름으로` : '바이어를 고쳤어요');
+      return true;
+    } catch (e) {
+      if (e instanceof AuthError) onAuthFail(e.message);
+      return e.message;
+    }
+  }, [code, refresh, showToast, onAuthFail]);
+
   const saveLost = useCallback((message) => showToast('저장하지 못했어요 · ' + message), [showToast]);
 
   // 홈 화면 앱에서 오른쪽으로 밀면 뒤로(홈에서는 갈 곳이 없어 끔)
@@ -118,6 +133,9 @@ export default function App() {
       <BuyerSchedule key={second} data={data} buyerName={second} onRemove={remove}
         focusEta={recent ? ls.eta : null} focusFruit={recent ? ls.fruit : null} />
     );
+  } else if (first === 'buyer' && (second === 'new' || (second === 'edit' && route.segs[2]))) {
+    const name = second === 'edit' ? route.segs[2] : '';
+    screen = <BuyerForm key={'buyer' + name} data={data} buyerName={name} onSave={saveBuyer} />;
   } else if (first === 'jpg' && second) {
     screen = <JpgPreview key={second} data={data} buyerName={second} />;
   } else if (first === 'new') {

@@ -36,4 +36,7 @@ export const IconImage = (p) => (
 export const IconAlert = (p) => (
   <Svg {...p}><path d="M12 3l9 17H3z" /><path d="M12 10v4M12 17h.01" /></Svg>
 );
+export const IconEdit = (p) => (
+  <Svg {...p}><path d="M4 20h4L19 9l-4-4L4 16v4z" /><path d="M14 6l4 4" /></Svg>
+);
 export const IconCheck = (p) => <Svg {...p}><path d="M5 12l5 5 9-10" /></Svg>;

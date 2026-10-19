@@ -570,6 +570,64 @@ describe('인보이스 번호 (규칙 5: KINGO-26-01 = 바이어-시즌-차수)'
   });
 });
 
+describe('바이어 더하기·고치기 (2026-10-19)', () => {
+  const add = (w, buyer, original) => w.call({ action: 'saveBuyer', code: CODE_1, buyer, original });
+
+  it('새 바이어는 바이어 탭 맨 뒤 순서로 더하고, 바로 목록에 나온다', () => {
+    const w = makeWorldWithOrder();
+    const res = add(w, { name: ' 새 바이어 ', nameEn: 'New Buyer', country: '대만', currency: 'usd', priceTerm: 'cif', exporter: 'Royal' });
+    expect(res).toMatchObject({ ok: true, name: '새 바이어', added: true });
+    const row = w.read('buyers').find((b) => b.name === '새 바이어');
+    expect(row).toMatchObject({ nameEn: 'New Buyer', country: '대만', currency: 'USD', priceTerm: 'CIF', exporter: 'Royal', priceUnit: 'carton', sortOrder: 3 });
+    const list = w.call({ action: 'list', code: CODE_1 });
+    expect(list.buyers.map((b) => b.name)).toContain('새 바이어');
+  });
+
+  it('이미 있는 이름(숨긴 바이어 포함, 대소문자·빈칸 무시)은 막는다', () => {
+    const w = makeWorld({
+      members: [{ name: '김산지', code: CODE_1 }],
+      buyers: [{ name: 'Kingo' }, { name: '옛 바이어', archived: true }]
+    });
+    expect(add(w, { name: 'kingo' })).toMatchObject({ ok: false });
+    const hidden = add(w, { name: '옛  바이어' });
+    expect(hidden.ok).toBe(false);
+    expect(hidden.message).toContain('숨겨져');
+    expect(w.read('buyers').filter((b) => b.name).length).toBe(2);
+  });
+
+  it('이름·통화가 틀리면 거절한다', () => {
+    const w = makeWorldWithOrder();
+    expect(add(w, { name: '' }).ok).toBe(false);
+    expect(add(w, { name: 'A|B' }).ok).toBe(false);
+    expect(add(w, { name: '새', currency: '달러' }).ok).toBe(false);
+  });
+
+  it('고치면 바뀐 칸만 쓰고, 이름을 바꾸면 그 바이어 스케줄 줄(지운 줄 포함)도 새 이름으로', () => {
+    const w = world();
+    const res = add(w, { name: '바이어 에이', nameEn: 'Buyer A', currency: 'USD', priceTerm: 'CIF', exporter: 'Hyun Nong Fresh' }, '바이어 A');
+    expect(res).toMatchObject({ ok: true, added: false, renamed: 4 });
+    const buyers = w.read('buyers').filter((b) => b.name);
+    expect(buyers.map((b) => b.name)).toEqual(['바이어 에이', '바이어 B']);
+    expect(buyers[0].priceTerm).toBe('CIF');
+    const rows = w.read('schedule').filter((r) => r.id);
+    expect(rows.filter((r) => r.buyer === '바이어 A')).toHaveLength(0);
+    expect(rows.filter((r) => r.buyer === '바이어 에이')).toHaveLength(4);
+    const list = w.call({ action: 'list', code: CODE_1 });
+    expect(list.rows.filter((r) => r.buyer === '바이어 에이').map((r) => r.id).sort()).toEqual(['a1', 'a2']);
+  });
+
+  it('없는 바이어를 고치려 하면 거절한다', () => {
+    const res = add(world(), { name: '아무개' }, '없는 바이어');
+    expect(res.ok).toBe(false);
+    expect(res.message).toContain('찾지 못했어요');
+  });
+
+  it('다른 바이어 이름으로는 바꿀 수 없다', () => {
+    const res = add(world(), { name: '바이어 B' }, '바이어 A');
+    expect(res.ok).toBe(false);
+  });
+});
+
 describe('remove', () => {
   it('행을 지우지 않고 삭제 칸에 표시만 한다 (규칙 4)', () => {
     const w = world();
