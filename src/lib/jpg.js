@@ -243,10 +243,7 @@ export function layoutJpg(model, measure) {
       priceLines = wrapText(p, pf, width.price, measure);
     }
     const etaText = etaOf(r);
-    const chip = r.eta && r.status === 'tbc';
-    const etaH = LH + (chip ? 40 : 0);
-    const textH = Math.max(noLines.length, itemLines.length, specLines.length, priceLines.length, 1) * LH;
-    const rowH = Math.max(textH, etaH);
+    const rowH = Math.max(noLines.length, itemLines.length, specLines.length, priceLines.length, 1) * LH;
 
     noLines.forEach((s, i) => text(col.no, top + 28 + i * LH, s, noF, C.text));
     itemLines.forEach((s, i) => text(col.item, top + 28 + i * LH, s, ITEM_F, C.text));
@@ -254,12 +251,6 @@ export function layoutJpg(model, measure) {
     specLines.forEach((s, i) => text(col.spec, top + 28 + i * LH, s, BODY_F, C.text));
     priceLines.forEach((s, i) => text(col.priceR, top + 28 + i * LH, s, pf, r.price === null ? C.tbc : C.text, 'right'));
     text(col.eta, top + 28, etaText, r.eta ? BODY_F : font(700, 28), r.eta ? C.text : C.tbc);
-    if (chip) {
-      const cf = font(700, 20);
-      const cw = measure('TBC', cf) + 20;
-      rect(col.eta, top + LH + 4, cw, 30, C.tbcBg, 8);
-      text(col.eta + 10, top + LH + 26, 'TBC', cf, C.tbc);
-    }
     y = top + rowH + 22;
     rect(PX, y, W - PX * 2, 2, C.line);
     y += 2;

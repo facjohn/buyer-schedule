@@ -117,7 +117,8 @@ describe('JPG용 허용 칸 (규칙 1)', () => {
     }
   });
   it('영어로 바꾸고, 영어가 없으면 한글을 넣지 않는다', () => {
-    expect(toBuyerRow(row, fruits)).toMatchObject({ fruit: 'Singo pear', ship: 'Air', spec: '15kg, 18-24', status: 'tbc' });
+    expect(toBuyerRow(row, fruits)).toMatchObject({ fruit: 'Singo pear', ship: 'Air', spec: '15kg, 18-24' });
+    expect(toBuyerRow(row, fruits)).not.toHaveProperty('status'); // 미정/확정은 없앰(2026-10-19)
     expect(toBuyerRow({ ...row, fruit: '단감', specEn: '' }, fruits)).toMatchObject({ fruit: '', spec: '' });
   });
   it('바이어가 표시를 끄면 가격도 빠진다', () => {

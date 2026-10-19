@@ -142,9 +142,7 @@ export function buyerCards(data) {
         fruits: [...new Set(nextRows.map((r) => r.fruit))].join('·'),
         ship: first.ship
       } : null,
-      shipments: new Set(rows.map(shipmentKey)).size,
-      // 카드의 '미정'은 바로 옆에 적힌 다음 선적이 미정일 때만(시안 01과 같게)
-      nextTbc: nextRows.some((r) => r.status !== '확정')
+      shipments: new Set(rows.map(shipmentKey)).size
     };
   });
   // 다음 ETA가 가까운 순 → ETA 미정만 있는 바이어 → 일정 없는 바이어

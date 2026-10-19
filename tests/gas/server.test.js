@@ -212,7 +212,6 @@ describe('save', () => {
     expect(res.saved[0]).toMatchObject({ key: 'k1', no: yr === Y ? 6 : 1, noYear: yr });
     const row = w.read('schedule').find((r) => r.id === res.saved[0].id);
     expect(row.updatedBy).toBe('김산지');
-    expect(row.status).toBe('미정');
     expect(row.deleted).toBe(false);
   });
 

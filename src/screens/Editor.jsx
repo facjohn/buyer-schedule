@@ -12,7 +12,8 @@ import { IconAlert, IconClose, IconTrash } from '../components/icons.jsx';
 
 // 회사(exporter)와 스펙 영어(specEn)는 따로 다룬다(아래 buildChanges).
 // 회사 칸은 화면에 없다(바이어 탭 기본 회사를 따름, 바꿀 땐 시트에서). 수량·메모도 시트에서만 다루고 앱은 건드리지 않는다.
-const PLAIN_FIELDS = ['buyer', 'fruit', 'ship', 'origin', 'specKo', 'eta', 'loadDate', 'status'];
+// 미정/확정 상태는 2026-10-19 사용자 요청으로 없앴다(시트의 상태 칸은 앱이 건드리지 않음)
+const PLAIN_FIELDS = ['buyer', 'fruit', 'ship', 'origin', 'specKo', 'eta', 'loadDate'];
 const MONEY_FIELDS = ['price', 'cost', 'workCost'];
 const ALL_FIELDS = [...PLAIN_FIELDS, 'no', 'specEn', 'exporter', ...MONEY_FIELDS];
 const SHIPS = ['20ft', '40ft', '항공'];
@@ -29,7 +30,6 @@ function formFromRow(row) {
     price: moneyInput(row.price, 2, 2),
     cost: moneyInput(row.cost, 0),
     workCost: moneyInput(row.workCost, 0),
-    status: row.status === '확정' ? '확정' : '미정',
     exporter: row.exporter || '',
     origin: row.origin || '',
     no: row.no === null || row.no === undefined ? '' : String(row.no),
@@ -83,7 +83,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
     const f = formFromRow(src);
     // 다음 선적: 다음 번호, 날짜는 새로 고르고, 산지가는 다시 확인해서 넣게 비운다(규칙 6)
     return asNext
-      ? { ...f, no: suggestNo(data, src.buyer, year), eta: '', loadDate: '', cost: '', status: '미정' }
+      ? { ...f, no: suggestNo(data, src.buyer, year), eta: '', loadDate: '', cost: '' }
       : { ...f, etaTbd: !f.eta };
   });
   // 회사 칸에 직접 적힌 줄이었는지(열 때 값). 고치기에서만 그 값을 지킨다.
@@ -410,7 +410,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
         </div>
         <div className="eta-tbd">
           <Chip on={form.etaTbd}
-            onClick={() => update(form.etaTbd ? { etaTbd: false } : { etaTbd: true, eta: '', status: '미정' })}>
+            onClick={() => update(form.etaTbd ? { etaTbd: false } : { etaTbd: true, eta: '' })}>
             ETA 미정
           </Chip>
         </div>
@@ -444,15 +444,10 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
             )}
           </div>
         ) : null}
-        <div className="row-2">
-          <Field label="바이어가" hint={mode === 'new' && !touched.price && form.price ? '직전 값' : ''}>
-            <MoneyField value={form.price} onChange={(v) => update({ price: v }, ['price'])}
-              symbol={currencySymbol(currency)} decimal label="바이어가" />
-          </Field>
-          <Field label="상태">
-            <Segmented options={['미정', '확정']} value={form.status} onChange={(v) => update({ status: v })} label="상태" />
-          </Field>
-        </div>
+        <Field label="바이어가" hint={mode === 'new' && !touched.price && form.price ? '직전 값' : ''}>
+          <MoneyField value={form.price} onChange={(v) => update({ price: v }, ['price'])}
+            symbol={currencySymbol(currency)} decimal label="바이어가" />
+        </Field>
 
         {mode === 'edit' && (
           <div className="danger-zone">

@@ -1,7 +1,8 @@
 // 바이어에게 나가는 JPG용 데이터. 절대 규칙 1: 허용한 칸만 골라 담은 새 객체를 만든다.
 // 산지가, 작업비, 산지, 수량, 메모, 상차일, 회사, 수정자 같은 내부 칸은 여기서 빠지고, 이 함수 말고는 JPG에 데이터를 넘기지 않는다.
 
-export const BUYER_FIELDS = ['no', 'fruit', 'ship', 'spec', 'eta', 'price', 'status'];
+// 미정/확정 상태는 2026-10-19 사용자 요청으로 없앴다(JPG에도 TBC 칩 없음). ETA가 없는 줄은 ETA 칸에 TBC.
+export const BUYER_FIELDS = ['no', 'fruit', 'ship', 'spec', 'eta', 'price'];
 
 const SHIP_EN = { '20ft': '20ft', '40ft': '40ft', 항공: 'Air' };
 
@@ -16,8 +17,7 @@ export function toBuyerRow(row, fruitEn, { withPrice = true } = {}) {
     ship: SHIP_EN[row.ship] || '',
     spec: row.specEn || '',
     eta: row.eta || '',
-    price: withPrice ? buyerPrice(row.price) : null,
-    status: row.status === '확정' ? 'confirmed' : 'tbc'
+    price: withPrice ? buyerPrice(row.price) : null
   };
 }
 

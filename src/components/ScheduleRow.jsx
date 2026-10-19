@@ -48,10 +48,7 @@ export default function ScheduleRow({ row, currency, onTap, onLong }) {
         <span className="dlabel">ETA</span>
         <span className="dval">
           {row.eta ? (
-            <>
-              <span className="eta">{fmtKo(row.eta)}</span>
-              {row.status !== '확정' && <span className="chip-tbc">미정</span>}
-            </>
+            <span className="eta">{fmtKo(row.eta)}</span>
           ) : (
             <span className="chip-tbc">ETA 미정</span>
           )}

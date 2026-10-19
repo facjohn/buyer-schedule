@@ -530,7 +530,6 @@ function newRow_(changes, join, typed, nb, member, now) {
   Object.keys(changes).forEach(function (f) { row[f] = changes[f].value; });
   var buyer = str_(row.buyer);
   if (!buyer) throw new Error('바이어를 골라 주세요.');
-  if (!row.status) row.status = '미정';
 
   var p = pickNo_(buyer, row.eta, join, typed, nb);
   addContainer_(nb, buyer, p.no, p.noYear);
