@@ -52,6 +52,64 @@ export function groupByMonth(rows, today) {
   return groups.sort((a, b) => (a.key === 'none') - (b.key === 'none'));
 }
 
+/** 글자 안의 숫자는 숫자로 비교(KINGO-26-9 < KINGO-26-10) */
+function natCmp(a, b) {
+  const ta = String(a).match(/\d+|\D+/g) || [];
+  const tb = String(b).match(/\d+|\D+/g) || [];
+  for (let i = 0; i < Math.max(ta.length, tb.length); i++) {
+    const x = ta[i];
+    const y = tb[i];
+    if (x === undefined) return -1;
+    if (y === undefined) return 1;
+    if (/^\d/.test(x) && /^\d/.test(y) && Number(x) !== Number(y)) return Number(x) - Number(y);
+    if (x !== y) return x < y ? -1 : 1;
+  }
+  return 0;
+}
+
+const hasNo = (r) => r.no !== null && r.no !== undefined && String(r.no).trim() !== '';
+const isLegacyNo = (r) => /^\d+$/.test(String(r.no).trim());
+
+/**
+ * 바이어 스케줄 목록 순서: No. 순(2026-10-19 사용자 요청: ETA 미정이라도 No. 순서대로).
+ * 인보이스 번호(KINGO-26-01)는 글자 속 숫자를 크기대로, 숫자만 쓰는 옛 번호는 번호 해(noYear)마다 따로 센다.
+ * 같은 No.(같은 컨테이너)는 ETA·과일·스펙 순, No.가 없는 줄은 맨 뒤. desc면 큰 번호부터(지난 일정).
+ */
+export function sortByNo(rows, { desc = false } = {}) {
+  const dir = desc ? -1 : 1;
+  return rows.slice().sort((a, b) => {
+    if (hasNo(a) !== hasNo(b)) return hasNo(a) ? -1 : 1;
+    let c = 0;
+    if (hasNo(a)) {
+      const la = isLegacyNo(a);
+      const lb = isLegacyNo(b);
+      if (la !== lb) c = la ? -1 : 1;
+      else if (la) c = cmp(noYearOf(a) || 0, noYearOf(b) || 0) || Number(a.no) - Number(b.no);
+      else c = natCmp(String(a.no).trim(), String(b.no).trim());
+    }
+    return dir * c || cmp(a.eta || '9999', b.eta || '9999') || cmp(a.fruit, b.fruit) || cmp(a.specKo, b.specKo);
+  });
+}
+
+/**
+ * No. 순으로 놓인 줄에 월 제목을 붙인다. 달이 바뀔 때만 새 제목(그래서 같은 달이 두 번 나올 수도 있다).
+ * ETA가 없는 줄은 상차일의 달, 그것도 없으면 앞 줄의 달에 둔다. 모두 날짜가 없으면 'ETA 미정'.
+ * [{ key, label, rows }]
+ */
+export function groupInNoOrder(rows, today) {
+  const groups = [];
+  let prev = null;
+  for (const r of rows) {
+    const month = r.eta ? r.eta.slice(0, 7) : r.loadDate ? r.loadDate.slice(0, 7) : prev || 'none';
+    if (!groups.length || month !== prev) {
+      groups.push({ key: month + '#' + groups.length, label: month === 'none' ? 'ETA 미정' : fmtMonthKo(month, today), rows: [] });
+    }
+    groups[groups.length - 1].rows.push(r);
+    prev = month;
+  }
+  return groups;
+}
+
 /** 앞으로의 줄: ETA가 오늘 이후이거나 ETA 미정 */
 function isUpcoming(r, today) {
   return !r.eta || r.eta >= today;

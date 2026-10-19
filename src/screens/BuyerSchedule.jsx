@@ -1,6 +1,6 @@
 // ② 바이어 스케줄: 한 건 두 줄, 월별 묶음. 누르면 고치기, 길게 누르면 복제·삭제.
 import { useMemo, useState } from 'react';
-import { PERIODS, filterPeriod, groupByMonth } from '../lib/schedule.js';
+import { PERIODS, filterPeriod, groupInNoOrder, sortByNo } from '../lib/schedule.js';
 import { addMonths, fmtKo } from '../lib/dates.js';
 import { useRemembered } from '../lib/uiMemory.js';
 import { navigate, back } from '../router.js';
@@ -40,7 +40,8 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mine, period, activeFruit, data.today]
   );
-  const groups = groupByMonth(rows, data.today);
+  // No. 순서대로(ETA 미정 줄도 제 번호 자리에). 월 제목은 달이 바뀔 때만
+  const groups = groupInNoOrder(sortByNo(rows, { desc: period === 'past' }), data.today);
 
   const closeMenu = () => {
     setMenuRow(null);

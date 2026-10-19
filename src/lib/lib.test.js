@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, addMonths, addDays } from './dates.js';
 import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
-import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, lastCost, lastPrice, shipmentKey } from './schedule.js';
+import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, shipmentKey, sortByNo } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
 
 describe('날짜 표기 (표기 규칙)', () => {
@@ -68,6 +68,34 @@ describe('스펙 영어: 적은 글자 그대로 (2026-10-16 사용자 요청)',
     expect(derivedSpecEn(specs, '샤인머스캣', '2kg 4송이/450g')).toBe('2kg, 4 bunches/450g');
     expect(derivedSpecEn(specs, '샤인머스캣', '2kg 4송이/4kg 5송이')).toBe('');
     expect(derivedSpecEn(specs, '샤인머스캣', '')).toBe('');
+  });
+});
+
+describe('바이어 스케줄 목록: No. 순 (2026-10-19 사용자 요청)', () => {
+  const r = (no, eta, extra = {}) => ({ id: String(no) + eta, buyer: '킹고', no, noYear: 2026, eta, fruit: '배', specKo: '15kg', ...extra });
+  it('ETA 미정 줄도 No. 자리에, 월 제목은 달이 바뀔 때만(ETA 없으면 상차일의 달)', () => {
+    const rows = [r(7, '2026-10-23'), r(8, '2026-10-28'), r(10, '2026-11-15'), r(9, '', { loadDate: '2026-11-04' })];
+    const sorted = sortByNo(rows);
+    expect(sorted.map((x) => x.no)).toEqual([7, 8, 9, 10]);
+    const g = groupInNoOrder(sorted, '2026-10-19');
+    expect(g.map((x) => [x.label, x.rows.map((y) => y.no)])).toEqual([['10월', [7, 8]], ['11월', [9, 10]]]);
+  });
+  it('상차일도 없으면 앞 줄의 달에 둔다', () => {
+    const g = groupInNoOrder(sortByNo([r(7, '2026-10-23'), r(9, '2026-11-15'), r(8, '')]), '2026-10-19');
+    expect(g.map((x) => [x.label, x.rows.map((y) => y.no)])).toEqual([['10월', [7, 8]], ['11월', [9]]]);
+  });
+  it('인보이스 번호는 숫자를 크기대로, 옛 숫자 번호는 해마다, No. 없는 줄은 뒤', () => {
+    const inv = sortByNo([r('KINGO-26-10', '2026-10-01'), r('KINGO-26-9', '2026-12-01'), r('KINGO-27-01', '2027-08-01')]);
+    expect(inv.map((x) => x.no)).toEqual(['KINGO-26-9', 'KINGO-26-10', 'KINGO-27-01']);
+    const old = sortByNo([r(1, '2027-01-05', { noYear: 2027 }), r(5, '2026-12-01'), r(null, '2026-10-01')]);
+    expect(old.map((x) => x.no)).toEqual([5, 1, null]);
+  });
+  it('지난 일정은 큰 번호부터', () => {
+    expect(sortByNo([r(3, '2026-09-01'), r(5, '2026-09-20'), r(4, '2026-09-10')], { desc: true }).map((x) => x.no)).toEqual([5, 4, 3]);
+  });
+  it('같은 No.(같은 컨테이너)는 붙어 있다', () => {
+    const s = sortByNo([r(8, '2026-10-28', { specKo: '15kg' }), r(7, '2026-10-23'), r(8, '2026-10-28', { specKo: '5kg' })]);
+    expect(s.map((x) => x.no + x.specKo)).toEqual(['715kg', '815kg', '85kg']);
   });
 });
 
