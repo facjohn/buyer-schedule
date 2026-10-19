@@ -538,6 +538,24 @@ describe('인보이스 번호 (규칙 5: KINGO-26-01 = 바이어-시즌-차수)'
     expect(rows.find((r) => r.id === b.id).no).toBe('KINGO-26-01');
   });
 
+  it('숫자 번호는 그 해 선적만: 2024년 No. 3이 있어도 2026년에 친 3은 2026년 새 선적 (2026-10-19 검토)', () => {
+    const w = makeWorld({
+      members: [{ name: '김산지', code: CODE_1 }],
+      buyers: [{ name: '바이어 B', nameEn: 'Buyer B' }],
+      fruits: [{ fruitKo: '신고배', fruitEn: 'Singo pear' }],
+      schedule: [
+        { id: 'old3', buyer: '바이어 B', no: 3, noYear: 2024, fruit: '신고배', specKo: '5kg', eta: d('2024-11-01'), deleted: false },
+        { id: 'old5', buyer: '바이어 B', no: 5, noYear: 2024, fruit: '신고배', specKo: '5kg', eta: d('2024-12-01'), deleted: false },
+        { id: 'r2', buyer: '바이어 B', no: 2, noYear: 2026, fruit: '신고배', specKo: '5kg', eta: d('2026-11-02'), deleted: false }
+      ]
+    });
+    const res = w.call({ action: 'save', code: CODE_1, items: [{ no: '3', changes: { buyer: '바이어 B', fruit: '신고배', specKo: '15kg', eta: '2026-11-20' } }] });
+    expect(res.saved[0]).toMatchObject({ no: 3, noYear: 2026 });
+    const ed = w.call({ action: 'save', code: CODE_1, items: [{ id: 'r2', no: '5', changes: {} }] });
+    expect(ed.saved[0]).toMatchObject({ no: 5, noYear: 2026 });
+    expect(w.read('schedule').find((r) => r.id === 'old5').no).toBe(5);
+  });
+
   it('숫자 번호: 10으로 저장한 두 줄 중 하나를 11로 고쳐도 먼저 저장한 줄은 10 그대로 (2026-10-19 사용자 신고)', () => {
     const w = world();
     const base2 = { ...base(), specKo: '5kg 7과' };

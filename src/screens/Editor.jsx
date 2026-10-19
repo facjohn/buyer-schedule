@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
 import { containersOf, derivedSpecEn, lastCost, lastPrice, originsOf, specEnOf, suggestNo } from '../lib/schedule.js';
+import { planNo } from '../lib/noPlan.js';
 import { back, buyerPath, replace, setLeaveGuard } from '../router.js';
 import { Chip, DateField, Field, MoneyField, Segmented, SelectField, TextField } from '../components/Controls.jsx';
 import { IconAlert, IconClose, IconTrash } from '../components/icons.jsx';
@@ -141,12 +142,9 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   const containers = form.buyer ? containersOf(data.rows, form.buyer, data.today) : [];
   const etaYear = Number((form.eta || data.today).slice(0, 4));
   const sugg = suggestNo(data, form.buyer, etaYear);
-  const noVal = form.no.trim();
-  const origNo = src && src.no !== null && src.no !== undefined ? String(src.no) : '';
-  // 쓴 번호가 그 바이어의 이미 있는 선적이면 그 선적(같은 컨테이너)
-  const match = noVal ? containers.find((c) => String(c.no) === noVal) : null;
-  const sameShipmentCount = src
-    ? data.rows.filter((r) => r.buyer === src.buyer && String(r.no) === origNo && r.noYear === src.noYear).length : 0;
+  // No. 판단(무엇을 보여 주고, 무엇을 보내고, 무슨 안내를 할지)은 lib/noPlan.js 한곳에서
+  const noPlan = planNo({ mode, asNext, touched: touched.no, typed: form.no, src, buyer: form.buyer, containers, sugg, etaYear, rows: data.rows });
+  const noVal = noPlan.value;
   const costHint = form.fruit && form.specKo ? lastCost(data.rows, { fruit: form.fruit, specKo: form.specKo.trim() }, src && src.id) : {};
   // 산지 칸 자동완성: 전에 쓴 산지 이름(많이 쓴 순)
   const origins = originsOf(data.rows);
@@ -162,12 +160,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       const next = { ...s.form, ...patch };
       if ('buyer' in patch && !t.exporter) next.exporter = defaultExporter(data, next.buyer);
       if ('eta' in patch && patch.eta) next.etaTbd = false;
-      // No.를 직접 치지 않았으면 바이어·ETA에 맞춰 다음 번호로(원래 바이어로 돌아오면 원래 번호)
-      if (!t.no && ('buyer' in patch || 'eta' in patch)) {
-        const year = Number((next.eta || data.today).slice(0, 4));
-        const keepOwn = src && next.buyer === src.buyer && (mode === 'edit' || (mode === 'dup' && !asNext));
-        next.no = keepOwn ? origNo : suggestNo(data, next.buyer, year);
-      }
+      // No.는 직접 치지 않으면 화면에 그때그때의 다음 번호(또는 원래 번호)를 보여 줄 뿐 보내지 않는다(noPlan)
       const specChanged = 'fruit' in patch || 'specKo' in patch;
       if (specChanged) {
         // 사전에 있는 스펙으로 바뀌면 사전 영어를 쓴다(앞 스펙에 맞춰 친 영어가 다른 스펙의 사전을 덮지 않게).
@@ -261,23 +254,15 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
     }
     const changes = buildChanges();
     const item = { key: saveKey, changes };
+    Object.assign(item, noPlan.payload);
     if (mode === 'edit') {
       item.id = src.id;
-      if (form.buyer !== src.buyer) {
-        if (touched.no && noVal) item.no = noVal; // 안 쳤으면 새 바이어의 다음 번호(창구가)
-      } else if (noVal && noVal !== origNo) {
-        item.no = noVal; // 이 줄만: 있는 번호면 그 선적으로, 없는 번호면 새 번호로(창구가)
-      }
       if (!Object.keys(changes).length && !item.no) {
         back(buyerPath(form.buyer));
         return;
       }
-    } else if (match) {
-      item.join = { no: match.no, noYear: match.noYear };
-    } else if (noVal && (touched.no || noVal !== sugg)) {
-      item.no = noVal;
     }
-    // 그 밖(비웠거나 미리 채운 다음 번호 그대로)은 창구가 저장할 때 다음 번호를 붙인다(동시에 저장해도 겹치지 않게)
+    // 번호를 안 보낸 새 줄은 창구가 저장할 때 잠금 안에서 다음 번호를 붙인다(동시에 저장해도 겹치지 않게)
     setSaving(true);
     const ok = await onSave([item], form.buyer, form.eta, form.fruit);
     if (!alive.current) {
@@ -314,32 +299,13 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   }
 
   const title = mode === 'edit' ? '스케줄 고치기'
-    : mode === 'dup' ? (match ? '같은 컨테이너에 사이즈 추가' : '다음 선적으로 복제') : '새 스케줄';
+    : mode === 'dup' ? (asNext ? '다음 선적으로 복제' : '같은 컨테이너에 사이즈 추가') : '새 스케줄';
   const subtitle = mode === 'edit'
     ? (src.updatedBy ? `마지막 수정 ${src.updatedBy}${src.updatedAt ? ' · ' + fmtKoDateTime(src.updatedAt) : ''}` : '')
-    : mode === 'dup' ? (match ? '스펙과 가격만 고쳐 주세요' : 'ETA와 산지가를 새로 넣어 주세요') : '';
+    : mode === 'dup' ? (asNext ? 'ETA와 산지가를 새로 넣어 주세요' : '스펙과 가격만 고쳐 주세요') : '';
 
-  // No. 안내: 쓴 번호가 무엇을 하는지
-  let noHint = '';
-  if (mode === 'edit') {
-    if (form.buyer !== src.buyer) {
-      noHint = match ? `${form.buyer}의 No. ${noVal} 선적으로 옮겨요.`
-        : touched.no && noVal ? `${form.buyer}의 새 번호 ${noVal}(으)로 옮겨요.` : `${form.buyer}의 다음 번호로 옮겨요.`;
-    } else if (noVal && noVal !== origNo) {
-      // 고치기에서 번호를 바꾸면 이 줄만 바뀐다(같은 번호의 다른 줄은 그대로)
-      noHint = match ? `이 줄만 No. ${noVal} 선적으로 옮겨요.`
-        : sameShipmentCount > 1 ? `이 줄만 ${noVal}(으)로 바꿔요. 같은 No. ${origNo}의 다른 ${sameShipmentCount - 1}줄은 그대로예요.`
-          : `번호를 ${noVal}(으)로 바꿔요.`;
-    }
-  } else if (match) {
-    noHint = `No. ${noVal} 선적(${match.label.split(' · ').slice(1).join(' · ')})에 줄을 더해요. 다음 선적이면 다른 번호를 써 주세요.`;
-  } else if (!noVal) {
-    noHint = '비워 두면 다음 번호가 자동으로 붙어요.';
-  } else if (!touched.no && noVal === sugg) {
-    noHint = '다음 번호예요. 인보이스 번호가 다르면 고쳐 써 주세요.';
-  } else {
-    noHint = '새 번호로 새 선적을 만들어요.';
-  }
+  // No. 안내: 쓴 번호가 무엇을 하는지(noPlan)
+  const noHint = noPlan.hint;
   const buyerOptions = [
     ...(form.buyer ? [] : [{ value: '', label: '바이어 고르기', disabled: true }]),
     ...data.buyers.filter((b) => !b.archived || b.name === form.buyer).map((b) => ({
@@ -380,7 +346,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
             <SelectField value={form.buyer} onChange={(v) => update({ buyer: v })} options={buyerOptions} label="바이어" />
           </Field>
           <Field label="No.">
-            <TextField value={form.no} onChange={(v) => update({ no: v }, ['no'])} label="No. (인보이스 번호)"
+            <TextField value={noPlan.shown} onChange={(v) => update({ no: v }, ['no'])} label="No. (인보이스 번호)"
               placeholder={sugg || '예: KINGO-26-01'} list="no-list" autoCapitalize="characters"
               className="input num" />
             {/* 그 바이어의 기존 번호(같은 컨테이너에 더할 때) */}

@@ -274,8 +274,15 @@ function addContainer_(nb, buyer, no, noYear) {
   if (!nb.years[k] || noYear > nb.years[k]) nb.years[k] = noYear;
 }
 
-/** 그 바이어에 그 번호의 선적이 있으면 {no, noYear} (같은 번호가 여러 해면 가장 최근 해) */
-function findContainer_(nb, buyer, no) {
+/**
+ * 그 바이어에 그 번호의 선적이 있으면 {no, noYear}.
+ * 숫자만 쓰는 옛 번호는 해마다 1부터 다시 세므로 year 해의 선적만 찾는다(2년 전 같은 번호에 붙지 않게).
+ * 앞글자가 있는 인보이스 번호(KINGO-26-01)는 번호에 시즌이 들어 있어 해와 상관없이 찾는다(여러 해면 가장 최근 해).
+ */
+function findContainer_(nb, buyer, no, year) {
+  if (/^\d+$/.test(no)) {
+    return year && nb.keys[containerKey_(buyer, no, year)] ? { no: no, noYear: year } : null;
+  }
   var y = nb.years[buyer + '|' + no];
   return y ? { no: no, noYear: y } : null;
 }
@@ -454,7 +461,7 @@ function save_(member, items) {
 /** 새 번호 정하기: 고른 선적(join) → 사람이 쓴 번호(있는 선적이면 그리로) → 다음 번호 */
 function pickNo_(buyer, eta, join, typed, nb) {
   if (join) return checkJoin_(join, buyer, nb);
-  if (typed) return findContainer_(nb, buyer, typed) || { no: typed, noYear: yearOf_(eta) };
+  if (typed) return findContainer_(nb, buyer, typed, yearOf_(eta)) || { no: typed, noYear: yearOf_(eta) };
   var noYear = yearOf_(eta);
   return { no: noStr_(nextNo_(nb.state, buyer, noYear)), noYear: noYear };
 }
@@ -480,7 +487,7 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
     no = p.no;
     noYear = p.noYear;
   } else if (typed && typed !== curNo) {
-    var there = findContainer_(nb, buyer, typed);
+    var there = findContainer_(nb, buyer, typed, curYear || yearOf_(eta));
     if (there) {
       // 이미 있는 번호: 이 줄만 그 선적으로
       no = there.no;
