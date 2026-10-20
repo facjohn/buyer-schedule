@@ -258,12 +258,12 @@ describe('스케줄 고르기·묶기', () => {
     const g = groupByMonth(filterPeriod(rows.filter((r) => r.buyer === 'A'), 'future', today), today);
     expect(g.map((x) => x.label)).toEqual(['10월', '11월', '2027년 1월', 'ETA 미정']);
   });
-  it('바이어 카드: 남은 선적은 No. 기준(같은 No.는 한 번), ETA 미정 선적도 센다. 상차일이 없으면 다음 상차 미정', () => {
+  it('바이어 카드: 예정 수는 앞으로의 스케줄 줄 수(같은 No.의 줄도 하나씩, ETA 미정 줄도 셈). 상차일이 없으면 다음 상차 미정', () => {
     const cards = buyerCards({ today, rows, buyers: [{ name: 'B' }, { name: 'A' }] });
     expect(cards[0].buyer.name).toBe('A');
-    expect(cards[0].shipments).toBe(4);
+    expect(cards[0].count).toBe(5); // 1, 2(신고배), 2(단감), 3, 9
     expect(cards[0].next).toMatchObject({ loadDate: '', fruits: '신고배' });
-    expect(cards[1]).toMatchObject({ shipments: 0, next: null, allLoaded: false });
+    expect(cards[1]).toMatchObject({ count: 0, next: null, allLoaded: false });
   });
   it('상차일 미정 선적만 있는 바이어는 상차일 있는 바이어 다음, 일정 없는 바이어 앞', () => {
     const r = [
@@ -287,9 +287,9 @@ describe('스케줄 고르기·묶기', () => {
     expect(cards.map((c) => c.buyer.name)).toEqual(['Z', 'X', 'Y', 'N']);
     expect(cards[0].next).toMatchObject({ loadDate: '2026-10-14', fruits: '키위' });
     expect(cards[1].next).toMatchObject({ loadDate: '2026-10-16', fruits: '샤인머스캣', ship: '항공' });
-    expect(cards[1].shipments).toBe(3);
-    expect(cards[2]).toMatchObject({ next: null, allLoaded: true, shipments: 1 });
-    expect(cards[3]).toMatchObject({ next: null, allLoaded: false, shipments: 0 });
+    expect(cards[1].count).toBe(3);
+    expect(cards[2]).toMatchObject({ next: null, allLoaded: true, count: 1 });
+    expect(cards[3]).toMatchObject({ next: null, allLoaded: false, count: 0 });
   });
   it('다음 상차 선적의 과일은 같은 컨테이너에서 상차일을 안 적은 줄까지 모은다', () => {
     const r = [

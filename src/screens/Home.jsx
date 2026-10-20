@@ -63,8 +63,8 @@ function BuyerTiles({ data }) {
               onClick={() => navigate(buyerPath(c.buyer.name))}>
               <div className="tile-top">
                 <div className="tile-name">{c.buyer.name}</div>
-                <span className={'tile-count' + (c.shipments ? '' : ' none')}>
-                  <span className="num">{c.shipments}</span>
+                <span className={'tile-count' + (c.count ? '' : ' none')}>
+                  <span className="num">{c.count}</span>
                   <span>예정</span>
                 </span>
               </div>

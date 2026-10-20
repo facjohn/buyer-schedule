@@ -157,7 +157,8 @@ function isUpcoming(r, today) {
 /**
  * 홈 바이어 카드. 다음 상차일이 가까운 바이어가 위(2026-10-20 사용자 요청: 다음 ETA 말고 다음 상차 기준),
  * 그다음 상차일 미정만 남은 바이어, 상차가 다 끝난(배가 가는 중) 바이어, 앞으로 일정이 없는 바이어. 같으면 바이어 탭 순서.
- * 남은 선적(예정 수)은 그대로 앞으로의 줄(ETA가 오늘 이후이거나 미정) 기준이다.
+ * 예정 수는 앞으로의 스케줄 줄 수(ETA가 오늘 이후이거나 미정, 같은 No.의 줄도 하나씩 셈. 2026-10-20 사용자 요청 "스케쥴 갯수만큼").
+ * 바이어 스케줄 목록(앞으로)의 줄 수와 같다.
  * 바이어 탭에 없는데 스케줄에만 있는 이름도 카드로 보인다(시트에서 이름을 바꾼 경우 놓치지 않게).
  */
 export function buyerCards(data) {
@@ -189,7 +190,7 @@ export function buyerCards(data) {
         ship: first.ship
       } : null,
       allLoaded: rows.length > 0 && !first, // 앞으로의 선적이 있는데 모두 상차가 끝남
-      shipments: new Set(rows.map(shipmentKey)).size
+      count: rows.length // 예정 수 = 앞으로의 스케줄 줄 수
     };
   });
   // 다음 상차가 가까운 순 → 상차일 미정 → 상차 다 끝남 → 일정 없는 바이어
