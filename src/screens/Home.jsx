@@ -1,12 +1,11 @@
 // ① 홈: 맨 위 '바이어별 보기 / 상차일로 보기' 버튼(2026-10-20 사용자 요청, 바이어 검색은 없앰).
-// 바이어별 보기: 바이어 바둑판(두 칸씩, 바이어마다 다른 색, 다음 상차 가까운 순). 카드에는 다음 ETA 대신 다음 상차(2026-10-20 사용자 요청).
+// 바이어별 보기: 바이어 바둑판(두 칸씩, 모두 같은 옅은 초록, 다음 상차 가까운 순. 바이어마다 다른 색은 2026-10-20 사용자 요청으로 없앰: 헷갈림). 카드에는 다음 ETA 대신 다음 상차(2026-10-20 사용자 요청).
 //   상차일이 없으면 "미정", 모두 실었으면 "상차 다 끝남".
 // 상차일로 보기: 앞으로의 일정(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩. 이미 실은 줄은 주황, 상차일 없는 줄은 맨 뒤.
 import { useMemo } from 'react';
 import { useRemembered } from '../lib/uiMemory.js';
 import { fmtKo, fmtKoDateTime, fmtKoYear } from '../lib/dates.js';
 import { buyerCards, loadingDays, shortNo } from '../lib/schedule.js';
-import { buyerColor } from '../lib/buyerColor.js';
 import { navigate, buyerPath } from '../router.js';
 import { Segmented } from '../components/Controls.jsx';
 import { IconPlus, IconSheet } from '../components/icons.jsx';
@@ -57,10 +56,8 @@ function BuyerTiles({ data }) {
       <div className="section-title">다음 상차 가까운 순</div>
       <div className="tiles">
         {cards.map((c) => {
-          const color = buyerColor(data.buyers, c.buyer.name);
           return (
             <button key={c.buyer.name} type="button" className="tile"
-              style={{ '--tile-bg': color.bg, '--tile-fg': color.fg }}
               onClick={() => navigate(buyerPath(c.buyer.name))}>
               <div className="tile-top">
                 <div className="tile-name">{c.buyer.name}</div>
@@ -93,7 +90,8 @@ function BuyerTiles({ data }) {
   );
 }
 
-/** 상차일로 보기: 날짜 제목 아래 한 줄씩(바이어 · No. · 과일 · 운송 · 스펙 · 산지). 누르면 그 줄 고치기 */
+/** 상차일로 보기: 날짜 제목 아래 한 줄씩(바이어 · No. · 과일 · 운송 · 스펙 · 산지). 누르면 그 줄 고치기.
+ *  바이어 칩은 모두 같은 색(2026-10-20 사용자 요청: 바이어마다 색이 다르면 헷갈림) */
 function LoadingList({ data }) {
   const days = useMemo(() => loadingDays(data), [data]);
   if (!days.length) return <div className="loadlist"><div className="empty-box">앞으로 일정이 없어요.</div></div>;
@@ -107,13 +105,12 @@ function LoadingList({ data }) {
             {d.loaded && <span className="lday-tag done">상차 끝남</span>}
           </h2>
           {d.rows.map((r) => {
-            const color = buyerColor(data.buyers, r.buyer);
             const no = shortNo(r.no);
             return (
               <button key={r.id} type="button" className={'lrow' + (d.loaded ? ' loaded' : '')}
                 aria-label={`${r.buyer} No. ${r.no || ''} ${r.fruit} ${r.specKo} 상차 ${fmtKo(d.date) || '미정'}${d.loaded ? '(상차 끝남)' : ''}`}
                 onClick={() => navigate('/edit/' + encodeURIComponent(r.id))}>
-                <span className="lrow-buyer" style={{ '--tile-bg': color.bg, '--tile-fg': color.fg }}>{r.buyer}</span>
+                <span className="lrow-buyer">{r.buyer}</span>
                 {no && <span className="lrow-no num">No.{no}</span>}
                 <span className="lrow-fruit">{r.fruit || '과일 없음'}</span>
                 {r.ship && <span className="ship-chip">{r.ship}</span>}

@@ -266,14 +266,3 @@ describe('도움 함수', () => {
     expect(jpgFileName(buildJpg(data, '킹고').model)).toBe('Kingo_Schedule_2026-10-14.jpg');
   });
 });
-
-describe('홈 바둑판 색', async () => {
-  const { buyerColor, BUYER_COLORS } = await import('./buyerColor.js');
-  it('바이어 탭 앞의 10명은 서로 다른 색, 같은 바이어는 늘 같은 색', () => {
-    const buyers = Array.from({ length: 10 }, (_, i) => ({ name: 'B' + i }));
-    const bgs = buyers.map((b) => buyerColor(buyers, b.name).bg);
-    expect(new Set(bgs).size).toBe(10);
-    expect(buyerColor(buyers, 'B3')).toBe(buyerColor(buyers, 'B3'));
-    expect(BUYER_COLORS).toContain(buyerColor(buyers, '탭에 없는 바이어'));
-  });
-});
