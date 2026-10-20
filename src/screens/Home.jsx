@@ -1,7 +1,7 @@
 // ① 홈: 맨 위 '바이어별 보기 / 상차일로 보기' 버튼(2026-10-20 사용자 요청, 바이어 검색은 없앰).
 // 바이어별 보기: 바이어 바둑판(두 칸씩, 모두 같은 옅은 초록, 다음 상차 가까운 순. 바이어마다 다른 색은 2026-10-20 사용자 요청으로 없앰: 헷갈림). 카드에는 다음 ETA 대신 다음 상차(2026-10-20 사용자 요청).
 //   상차일이 없으면 "미정", 모두 실었으면 "상차 다 끝남".
-// 상차일로 보기: 앞으로의 일정(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩. 이미 실은 줄은 주황, 상차일 없는 줄은 맨 뒤.
+// 상차일로 보기: 앞으로의 일정(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩. 상차 당일까지만 보이고(지난 상차는 빠짐), 상차일 없는 줄은 맨 뒤.
 import { useMemo } from 'react';
 import { useRemembered } from '../lib/uiMemory.js';
 import { fmtKo, fmtKoDateTime, fmtKoYear } from '../lib/dates.js';
@@ -103,13 +103,12 @@ function LoadingList({ data }) {
           <h2 className="lday">
             {d.date ? fmtKoYear(d.date, data.today) : '상차일 미정'}
             {d.isToday && <span className="lday-tag today">오늘</span>}
-            {d.loaded && <span className="lday-tag done">상차 끝남</span>}
           </h2>
           {d.rows.map((r) => {
             const no = shortNo(r.no);
             return (
-              <button key={r.id} type="button" className={'lrow' + (d.loaded ? ' loaded' : '')}
-                aria-label={`${r.buyer} No. ${r.no || ''} ${r.fruit} ${r.specKo} 상차 ${fmtKo(d.date) || '미정'}${d.loaded ? '(상차 끝남)' : ''}`}
+              <button key={r.id} type="button" className="lrow"
+                aria-label={`${r.buyer} No. ${r.no || ''} ${r.fruit} ${r.specKo} 상차 ${fmtKo(d.date) || '미정'}`}
                 onClick={() => navigate('/edit/' + encodeURIComponent(r.id))}>
                 <span className="lrow-buyer">{r.buyer}</span>
                 {no && <span className="lrow-no num">No.{no}</span>}

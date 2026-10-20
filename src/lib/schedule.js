@@ -178,14 +178,15 @@ export function buyerCards(data) {
 
 /**
  * 홈 '상차일로 보기'(2026-10-20 사용자 요청): 앞으로의 줄(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩, 날짜마다 묶는다.
- * 같은 날은 바이어 탭 순서 → No. 순. 이미 실은 줄(상차일 < 오늘)도 도착 전이면 맨 위에 보이고(loaded, 주황), 상차일이 빈 줄은 맨 뒤 묶음.
- * [{ key, date, isToday, loaded, rows }]
+ * 같은 날은 바이어 탭 순서 → No. 순. 상차일이 빈 줄은 맨 뒤 묶음.
+ * 상차일이 지난 줄(상차 끝남)은 빼고, 상차 당일까지만 보인다(2026-10-20 사용자 요청 "상차 끝남은 당일까지만 유지하고 지난거는 지워줘").
+ * [{ key, date, isToday, rows }]
  */
 export function loadingDays(data) {
   const today = data.today;
   const orderOf = new Map((data.buyers || []).map((b, i) => [b.name, i]));
   const ord = (r) => (orderOf.has(r.buyer) ? orderOf.get(r.buyer) : orderOf.size);
-  const rows = sortByNo((data.rows || []).filter((r) => isUpcoming(r, today)));
+  const rows = sortByNo((data.rows || []).filter((r) => isUpcoming(r, today) && !loadedPast(r, today)));
   rows.sort((a, b) => {
     if (!a.loadDate !== !b.loadDate) return a.loadDate ? -1 : 1;
     if (a.loadDate !== b.loadDate) return cmp(a.loadDate, b.loadDate);
@@ -196,7 +197,7 @@ export function loadingDays(data) {
     const key = r.loadDate || 'none';
     let d = days[days.length - 1];
     if (!d || d.key !== key) {
-      d = { key, date: r.loadDate || '', isToday: !!r.loadDate && r.loadDate === today, loaded: loadedPast(r, today), rows: [] };
+      d = { key, date: r.loadDate || '', isToday: !!r.loadDate && r.loadDate === today, rows: [] };
       days.push(d);
     }
     d.rows.push(r);

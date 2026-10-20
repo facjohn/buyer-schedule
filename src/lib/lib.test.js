@@ -124,7 +124,7 @@ describe('상차 끝난 줄 주황 바탕, ETA 지난 줄은 지난 일정 (2026
 });
 
 describe('홈 상차일로 보기 (2026-10-20 사용자 요청)', () => {
-  it('앞으로의 줄만 상차일 순, 같은 날은 바이어 탭 순서 → No. 순, 실은 줄은 맨 위(loaded), 상차일 없는 줄은 맨 뒤', () => {
+  it('앞으로의 줄만 상차일 순, 같은 날은 바이어 탭 순서 → No. 순, 상차일이 지난 줄은 빼고(당일까지만), 상차일 없는 줄은 맨 뒤', () => {
     const today = '2026-10-20';
     const rows = [
       { id: 'k6', buyer: '킹고', no: 6, noYear: 2026, eta: '2026-10-26', loadDate: '2026-10-22' },
@@ -139,13 +139,11 @@ describe('홈 상차일로 보기 (2026-10-20 사용자 요청)', () => {
     ];
     const buyers = [{ name: '킹고' }, { name: '샤인' }, { name: '포미나' }, { name: '하워드' }, { name: 'S&W' }];
     const days = loadingDays({ today, rows, buyers });
-    expect(days.map((d) => [d.key, d.loaded, d.isToday, d.rows.map((r) => r.id)])).toEqual([
-      ['2026-10-15', true, false, ['h7']],
-      ['2026-10-16', true, false, ['h9']],
-      ['2026-10-20', false, true, ['p7']],
-      ['2026-10-22', false, false, ['k5', 'k6', 's4']],
-      ['2026-11-03', false, false, ['w3']],
-      ['none', false, false, ['p9']]
+    expect(days.map((d) => [d.key, d.isToday, d.rows.map((r) => r.id)])).toEqual([
+      ['2026-10-20', true, ['p7']],
+      ['2026-10-22', false, ['k5', 'k6', 's4']],
+      ['2026-11-03', false, ['w3']],
+      ['none', false, ['p9']]
     ]);
   });
 });
