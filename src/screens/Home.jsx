@@ -2,12 +2,13 @@
 // 바이어별 보기: 바이어 바둑판(두 칸씩, 모두 같은 옅은 초록, 다음 상차 가까운 순. 바이어마다 다른 색은 2026-10-20 사용자 요청으로 없앰: 헷갈림). 카드에는 다음 ETA 대신 다음 상차(2026-10-20 사용자 요청).
 //   상차일이 없으면 "미정", 모두 실었으면 "상차 다 끝남".
 // 상차일로 보기: 앞으로의 일정(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩. 상차 당일까지만 보이고(지난 상차는 빠짐), 상차일 없는 줄은 맨 뒤.
+//   위 '지난 일정' 버튼을 누르면 이번 시즌(7월부터) 지난 상차를 최근 날짜부터(2026-10-20 사용자 요청).
 import { useMemo } from 'react';
 import { useRemembered } from '../lib/uiMemory.js';
 import { fmtKo, fmtKoDateTime, fmtKoYear } from '../lib/dates.js';
-import { buyerCards, loadingDays, shortNo } from '../lib/schedule.js';
+import { buyerCards, loadingDays, seasonLabel, shortNo } from '../lib/schedule.js';
 import { navigate, buyerPath } from '../router.js';
-import { Segmented } from '../components/Controls.jsx';
+import { Chip, Segmented } from '../components/Controls.jsx';
 import { fruitToneClass } from '../lib/fruitTone.js';
 import { IconPlus, IconSheet } from '../components/icons.jsx';
 
@@ -94,10 +95,16 @@ function BuyerTiles({ data }) {
 /** 상차일로 보기: 날짜 제목 아래 한 줄씩(바이어 · No. · 과일 · 운송 · 스펙 · 산지). 누르면 그 줄 고치기.
  *  바이어 칩은 모두 같은 색(2026-10-20 사용자 요청: 바이어마다 색이 다르면 헷갈림) */
 function LoadingList({ data }) {
-  const days = useMemo(() => loadingDays(data), [data]);
-  if (!days.length) return <div className="loadlist"><div className="empty-box">앞으로 일정이 없어요.</div></div>;
+  const [periodRaw, setPeriod] = useRemembered('home.load.period', 'future');
+  const past = periodRaw === 'past';
+  const days = useMemo(() => loadingDays(data, { past }), [data, past]);
   return (
     <div className="loadlist">
+      <div className="filters">
+        <Chip on={past} onClick={() => setPeriod(past ? 'future' : 'past')}>지난 일정</Chip>
+      </div>
+      {past && <p className="period-note">이번 시즌({seasonLabel(data.today)}부터) 지난 상차예요. 최근 날짜부터 보여요.</p>}
+      {!days.length && <div className="empty-box">{past ? '이번 시즌 지난 상차가 없어요.' : '앞으로 일정이 없어요.'}</div>}
       {days.map((d) => (
         <section key={d.key}>
           <h2 className="lday">

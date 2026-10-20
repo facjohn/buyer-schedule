@@ -95,6 +95,7 @@ h1, h2, p { margin: 0; }
 .view-switch .seg-btn { min-height: 44px; font-size: 15px; }
 /* 상차일로 보기: 날짜 제목 + 한 줄씩 */
 .loadlist { margin-top: 12px; background: #fff; border-top: 1px solid var(--border); min-height: 50vh; padding-bottom: 24px; }
+.loadlist .filters { padding-bottom: 4px; }
 .lday {
   display: flex; align-items: center; gap: 6px; padding: 14px 16px 4px;
   font-size: 14px; line-height: 20px; font-weight: 700; color: var(--brand);
@@ -159,6 +160,8 @@ h1, h2, p { margin: 0; }
 .page-title h1 { font-size: 21px; line-height: 27px; font-weight: 700; overflow-wrap: anywhere; }
 
 .filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px 10px; background: #fff; }
+/* 지난 일정: 이번 시즌(7월 1일부터)만 보인다는 안내 */
+.period-note { padding: 0 16px 10px; background: #fff; font-size: 12.5px; line-height: 18px; color: var(--text-2); }
 .chip {
   height: 40px; padding: 0 14px; border: 1px solid var(--input-border); border-radius: 999px; background: #fff;
   color: var(--text); font-size: 14px; font-weight: 500; white-space: nowrap;

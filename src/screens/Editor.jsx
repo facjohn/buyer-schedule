@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
-import { containersOf, derivedSpecEn, lastCost, lastPrice, originsOf, specEnOf, suggestNo } from '../lib/schedule.js';
+import { containersOf, derivedSpecEn, lastCost, lastPrice, originsOf, seasonLabel, seasonStartIso, specEnOf, suggestNo } from '../lib/schedule.js';
 import { planNo } from '../lib/noPlan.js';
 import { back, buyerPath, replace, setLeaveGuard } from '../router.js';
 import { Chip, DateField, Field, MoneyField, Segmented, SelectField, TextField } from '../components/Controls.jsx';
@@ -415,7 +415,9 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
           </Chip>
         </div>
         {etaPast && (
-          <p className="warn"><IconAlert size={18} /> ETA가 지난 날짜예요. 해와 날짜를 확인해 주세요.</p>
+          <p className="warn"><IconAlert size={18} /> {form.eta < seasonStartIso(data.today)
+            ? `ETA가 이번 시즌(${seasonLabel(data.today)}부터) 전이에요. 저장하면 앱 목록에는 안 보이고 시트에만 남아요. 해와 날짜를 확인해 주세요.`
+            : 'ETA가 지난 날짜예요. 해와 날짜를 확인해 주세요.'}</p>
         )}
         {etaBeforeLoad && (
           <p className="warn"><IconAlert size={18} /> ETA가 상차일보다 빨라요. 날짜를 확인해 주세요.</p>

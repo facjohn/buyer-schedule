@@ -30,14 +30,39 @@ export const PERIODS = [
   { key: 'past', label: '지난 일정' }
 ];
 
-/** 기간 버튼. 날짜 없는 줄은 '다음 2개월'과 '앞으로 전부'에 넣는다(놓치지 않게). */
 /** 상차일이 오늘보다 앞이면(오늘 상차는 아직) 상차가 끝난 줄. 목록에서 주황 바탕(2026-10-20 사용자 요청, JPG와 상관없음) */
 export function loadedPast(r, today) {
   return !!(r && r.loadDate && today && r.loadDate < today);
 }
 
+/** 시즌은 7월 1일에 시작한다(7월~다음 해 6월, 2026-10-20 사용자 요청 "시즌 (7월~내년7월까지) 유지하자") */
+export const SEASON_START_MONTH = 7;
+
+/** 오늘이 속한 시즌의 첫날 'yyyy-07-01'. 오늘이 7월 전이면 지난해 7월 1일 */
+export function seasonStartIso(today, month = SEASON_START_MONTH) {
+  if (!today) return '';
+  const y = Number(today.slice(0, 4));
+  const m = Number(today.slice(5, 7));
+  return `${m >= month ? y : y - 1}-${String(month).padStart(2, '0')}-01`;
+}
+
+/** 지난 일정 순서: ETA가 최근인 것이 맨 위(2026-10-20 사용자 요청 "지난일정에는 최근 게 가장 위에"), 같은 날이면 큰 번호부터 */
+export function sortRecentFirst(rows) {
+  return sortByNo(rows, { desc: true }).sort((a, b) => cmp(b.eta || '', a.eta || ''));
+}
+
+/** 시즌 안내 글자 "2026년 7월" */
+export function seasonLabel(today) {
+  const s = seasonStartIso(today);
+  return s ? `${s.slice(0, 4)}년 ${Number(s.slice(5, 7))}월` : '';
+}
+
+/** 기간. 앞으로: ETA가 오늘 이후이거나 미정. 지난 일정: ETA가 오늘보다 앞이고 이번 시즌(7월 1일부터) 것만 */
 export function filterPeriod(rows, period, today) {
-  if (period === 'past') return sortRows(rows.filter((r) => r.eta && r.eta < today), { desc: true });
+  if (period === 'past') {
+    const from = seasonStartIso(today);
+    return sortRows(rows.filter((r) => r.eta && r.eta < today && r.eta >= from), { desc: true });
+  }
   const end = period === 'next2' ? addMonths(today, 2) : null;
   return sortRows(rows.filter((r) => !r.eta || (r.eta >= today && (!end || r.eta <= end))));
 }
@@ -180,16 +205,22 @@ export function buyerCards(data) {
  * 홈 '상차일로 보기'(2026-10-20 사용자 요청): 앞으로의 줄(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩, 날짜마다 묶는다.
  * 같은 날은 바이어 탭 순서 → No. 순. 상차일이 빈 줄은 맨 뒤 묶음.
  * 상차일이 지난 줄(상차 끝남)은 빼고, 상차 당일까지만 보인다(2026-10-20 사용자 요청 "상차 끝남은 당일까지만 유지하고 지난거는 지워줘").
+ * past면 '지난 일정'(같은 날 사용자 요청 "상차일로 보기누르면 지난일정 칸을 따로"): 이번 시즌(7월 1일부터) 상차일이 지난 줄을
+ * 최근 날짜부터(ETA가 지났어도 보임).
  * [{ key, date, isToday, rows }]
  */
-export function loadingDays(data) {
+export function loadingDays(data, { past = false } = {}) {
   const today = data.today;
   const orderOf = new Map((data.buyers || []).map((b, i) => [b.name, i]));
   const ord = (r) => (orderOf.has(r.buyer) ? orderOf.get(r.buyer) : orderOf.size);
-  const rows = sortByNo((data.rows || []).filter((r) => isUpcoming(r, today) && !loadedPast(r, today)));
+  const from = seasonStartIso(today);
+  const keep = past
+    ? (r) => loadedPast(r, today) && r.loadDate >= from
+    : (r) => isUpcoming(r, today) && !loadedPast(r, today);
+  const rows = sortByNo((data.rows || []).filter(keep));
   rows.sort((a, b) => {
     if (!a.loadDate !== !b.loadDate) return a.loadDate ? -1 : 1;
-    if (a.loadDate !== b.loadDate) return cmp(a.loadDate, b.loadDate);
+    if (a.loadDate !== b.loadDate) return past ? cmp(b.loadDate, a.loadDate) : cmp(a.loadDate, b.loadDate);
     return ord(a) - ord(b) || cmp(a.buyer, b.buyer);
   });
   const days = [];

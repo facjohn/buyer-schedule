@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, addMonths, addDays } from './dates.js';
 import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
-import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, shipmentKey, sortByNo } from './schedule.js';
+import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, seasonLabel, seasonStartIso, shipmentKey, sortByNo, sortRecentFirst } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
 import { fruitTone } from './fruitTone.js';
 
@@ -91,8 +91,14 @@ describe('바이어 스케줄 목록: No. 순 (2026-10-19 사용자 요청)', ()
     const old = sortByNo([r(1, '2027-01-05', { noYear: 2027 }), r(5, '2026-12-01'), r(null, '2026-10-01')]);
     expect(old.map((x) => x.no)).toEqual([5, 1, null]);
   });
-  it('지난 일정은 큰 번호부터', () => {
+  it('sortByNo desc는 큰 번호부터', () => {
     expect(sortByNo([r(3, '2026-09-01'), r(5, '2026-09-20'), r(4, '2026-09-10')], { desc: true }).map((x) => x.no)).toEqual([5, 4, 3]);
+  });
+  it('지난 일정은 ETA가 최근인 것이 맨 위, 같은 날이면 큰 번호부터 (2026-10-20 사용자 요청)', () => {
+    const s = sortRecentFirst([r(7, '2026-10-26'), r(8, '2026-10-23'), r(9, '2026-10-26'), r(6, '2026-10-01')]);
+    expect(s.map((x) => x.no)).toEqual([9, 7, 8, 6]);
+    const g = groupInNoOrder(s, '2026-10-30');
+    expect(g.map((x) => x.label)).toEqual(['10월']);
   });
   it('같은 No.(같은 컨테이너)는 붙어 있다', () => {
     const s = sortByNo([r(8, '2026-10-28', { specKo: '15kg' }), r(7, '2026-10-23'), r(8, '2026-10-28', { specKo: '5kg' })]);
@@ -123,6 +129,30 @@ describe('상차 끝난 줄 주황 바탕, ETA 지난 줄은 지난 일정 (2026
   });
 });
 
+describe('지난 일정은 이번 시즌(7월~다음 해 6월)만 (2026-10-20 사용자 요청)', () => {
+  it('시즌 첫날은 7월 1일, 7월 전이면 지난해 7월 1일', () => {
+    expect(seasonStartIso('2026-10-20')).toBe('2026-07-01');
+    expect(seasonStartIso('2026-07-01')).toBe('2026-07-01');
+    expect(seasonStartIso('2027-06-30')).toBe('2026-07-01');
+    expect(seasonStartIso('2027-07-01')).toBe('2027-07-01');
+    expect(seasonStartIso('')).toBe('');
+    expect(seasonLabel('2026-10-20')).toBe('2026년 7월');
+    expect(seasonLabel('2027-03-02')).toBe('2026년 7월');
+  });
+  it('지난 일정에는 이번 시즌 줄만, 7월 1일이 되면 지난 시즌 줄은 빠진다(앞으로 일정은 그대로)', () => {
+    const rows = [
+      { id: 'jun', eta: '2026-06-30' },
+      { id: 'jul', eta: '2026-07-01' },
+      { id: 'oct', eta: '2026-10-19' },
+      { id: 'next', eta: '2026-10-25' },
+      { id: 'tbc', eta: '' }
+    ];
+    expect(filterPeriod(rows, 'past', '2026-10-20').map((r) => r.id)).toEqual(['oct', 'jul']);
+    expect(filterPeriod(rows, 'past', '2027-07-01').map((r) => r.id)).toEqual([]);
+    expect(filterPeriod(rows, 'future', '2026-10-20').map((r) => r.id).sort()).toEqual(['next', 'tbc']);
+  });
+});
+
 describe('홈 상차일로 보기 (2026-10-20 사용자 요청)', () => {
   it('앞으로의 줄만 상차일 순, 같은 날은 바이어 탭 순서 → No. 순, 상차일이 지난 줄은 빼고(당일까지만), 상차일 없는 줄은 맨 뒤', () => {
     const today = '2026-10-20';
@@ -144,6 +174,13 @@ describe('홈 상차일로 보기 (2026-10-20 사용자 요청)', () => {
       ['2026-10-22', false, ['k5', 'k6', 's4']],
       ['2026-11-03', false, ['w3']],
       ['none', false, ['p9']]
+    ]);
+    // 지난 일정: 이번 시즌(7월 1일부터) 상차일이 지난 줄, 최근 날짜부터(ETA가 지났어도)
+    const past = loadingDays({ today, rows: [...rows, { id: 'jun', buyer: '킹고', no: 2, noYear: 2026, eta: '2026-07-10', loadDate: '2026-06-28' }], buyers }, { past: true });
+    expect(past.map((d) => [d.key, d.rows.map((r) => r.id)])).toEqual([
+      ['2026-10-16', ['h9']],
+      ['2026-10-15', ['h7']],
+      ['2026-10-10', ['old']]
     ]);
   });
 });

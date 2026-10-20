@@ -1,7 +1,8 @@
 // ② 바이어 스케줄: 한 건 두 줄, No. 순(월 제목은 달이 바뀔 때만). 누르면 고치기, 길게 누르면 복제·삭제.
 // 위에 '지난 일정' 버튼(기본은 앞으로의 일정 전부)과 과일 버튼(2026-10-19 사용자 요청: 다음 2개월·앞으로 전부 없앰).
+// 지난 일정은 이번 시즌(7월 1일부터) 것만(2026-10-20 사용자 요청). 그 전 시즌은 시트에서 본다.
 import { useMemo, useState } from 'react';
-import { filterPeriod, fruitsInOrder, groupInNoOrder, sortByNo } from '../lib/schedule.js';
+import { filterPeriod, fruitsInOrder, groupInNoOrder, seasonLabel, seasonStartIso, sortByNo, sortRecentFirst } from '../lib/schedule.js';
 import { fmtKo } from '../lib/dates.js';
 import { useRemembered } from '../lib/uiMemory.js';
 import { navigate, back } from '../router.js';
@@ -10,14 +11,15 @@ import { ActionSheet } from '../components/Sheet.jsx';
 import { Chip } from '../components/Controls.jsx';
 import { IconBack, IconCopy, IconEdit, IconImage, IconPlus, IconTrash } from '../components/icons.jsx';
 
-// 기간은 둘: 앞으로(future, 기본, ETA 미정 포함)와 지난 일정(past)
+// 기간은 둘: 앞으로(future, 기본, ETA 미정 포함)와 지난 일정(past, 이번 시즌 것만)
 function periodShows(period, eta, today) {
-  return period === 'past' ? !!eta && eta < today : !eta || eta >= today;
+  return period === 'past' ? !!eta && eta < today && eta >= seasonStartIso(today) : !eta || eta >= today;
 }
 
-/** 방금 저장한 줄이 보이는 기간(지난 날짜로 저장하고 돌아왔는데 목록에 안 보이지 않게) */
+/** 방금 저장한 줄이 보이는 기간(지난 날짜로 저장하고 돌아왔는데 목록에 안 보이지 않게).
+ *  이번 시즌 전 ETA는 어느 쪽에도 안 보이므로 지난 일정으로 넘기지 않는다(입력 화면이 미리 알림). */
 function periodFor(eta, today) {
-  return eta && eta < today ? 'past' : 'future';
+  return eta && eta < today && eta >= seasonStartIso(today) ? 'past' : 'future';
 }
 
 export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, onRemove }) {
@@ -39,8 +41,8 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
   const fruits = useMemo(() => fruitsInOrder(inPeriod, data.fruits), [inPeriod, data.fruits]);
   const activeFruit = fruits.includes(fruit) ? fruit : ''; // 기억한 과일이 여기에 없으면 전체로
   const rows = useMemo(() => inPeriod.filter((r) => !activeFruit || r.fruit === activeFruit), [inPeriod, activeFruit]);
-  // No. 순서대로(ETA 미정 줄도 제 번호 자리에). 월 제목은 달이 바뀔 때만
-  const groups = groupInNoOrder(sortByNo(rows, { desc: period === 'past' }), data.today);
+  // 앞으로: No. 순서대로(ETA 미정 줄도 제 번호 자리에). 지난 일정: ETA가 최근인 것이 맨 위(2026-10-20 사용자 요청). 월 제목은 달이 바뀔 때만
+  const groups = groupInNoOrder(period === 'past' ? sortRecentFirst(rows) : sortByNo(rows), data.today);
 
   const closeMenu = () => {
     setMenuRow(null);
@@ -80,6 +82,10 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
         )}
       </div>
 
+      {period === 'past' && (
+        <p className="period-note">이번 시즌({seasonLabel(data.today)}부터) 지난 일정이에요. 그 전 시즌은 시트에서 봐요.</p>
+      )}
+
       <div className="table">
         <TableHead />
         {groups.map((g) => (
@@ -94,7 +100,7 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
         ))}
         {!groups.length && (
           <div className="empty-box">
-            {period === 'past' ? '지난 일정이 없어요.' : '앞으로 일정이 없어요.'}
+            {period === 'past' ? '이번 시즌 지난 일정이 없어요.' : '앞으로 일정이 없어요.'}
           </div>
         )}
       </div>
