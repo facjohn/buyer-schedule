@@ -8,8 +8,7 @@
   --muted: #6B7570;
   --brand: #1F6B4F;
   --brand-soft: #E6F1EC;
-  --home-bg: #FCF9EE;   /* 홈 바탕 옅은 아이보리(2026-10-20 사용자 요청) */
-  --tile-yellow: #FFF4C2; /* 홈 바둑판 칸 옅은 노랑(2026-10-20 사용자 요청) */
+  --home-bg: #F8F5EC; /* 홈 바탕 아이보리, 바둑판 칸은 흰색(2026-10-20 사용자 요청: 노랑은 촌스러움) */
   --tbc: #A15C07;
   --tbc-bg: #FCF1E3;
   --cost: #8A4E05;
@@ -122,12 +121,12 @@ h1, h2, p { margin: 0; }
   display: flex; align-items: center; justify-content: space-between; min-height: 44px;
   margin: 6px 20px 0; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--text-2);
 }
-/* 바이어 바둑판: 두 칸씩 정사각형, 모두 같은 옅은 노랑(2026-10-20 사용자 요청: 바이어마다 다른 색은 헷갈림 → 초록 하나 → 노랑) */
+/* 바이어 바둑판: 두 칸씩 정사각형, 모두 흰색(2026-10-20 사용자 요청: 바이어마다 다른 색은 헷갈림 → 초록 → 노랑은 촌스러움 → 흰색) */
 .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 20px 24px; }
 .tile {
   aspect-ratio: 1 / 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 2px;
-  padding: 14px; border: 0; border-radius: 20px; background: var(--tile-yellow); color: var(--text); text-align: left;
-  box-shadow: inset 0 0 0 1px rgba(24, 32, 29, 0.05);
+  padding: 14px; border: 0; border-radius: 20px; background: #fff; color: var(--text); text-align: left;
+  box-shadow: 0 1px 2px rgba(24, 32, 29, 0.05), inset 0 0 0 1px rgba(24, 32, 29, 0.07);
 }
 .tile:active { filter: brightness(0.96); }
 .tile-top { display: flex; align-items: flex-start; gap: 6px; }
