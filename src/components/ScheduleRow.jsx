@@ -6,6 +6,7 @@ import { fmtPrice, fmtWon } from '../lib/money.js';
 import { useLongPress } from '../hooks/useLongPress.js';
 import { loadedPast, shortNo } from '../lib/schedule.js';
 import { IconLock } from './icons.jsx';
+import { fruitToneClass } from '../lib/fruitTone.js';
 
 /** 여러 가격('17.3/17.8/18.2')은 좁은 칸에서 '/' 뒤에서 줄이 바뀌게 */
 function breakAtSlash(s) {
@@ -37,7 +38,7 @@ export default function ScheduleRow({ row, currency, today, onTap, onLong }) {
         {shortNo(row.no)}
       </div>
       <div className="srow-top">
-        <span className="fruit">{row.fruit || '과일 없음'}</span>
+        <span className={'fruit' + fruitToneClass(row.fruit)}>{row.fruit || '과일 없음'}</span>
         {row.ship && <span className="ship-chip">{row.ship}</span>}
         <span className="spec">{row.specKo}</span>
         {row.origin && <span className="origin-chip">{row.origin}</span>}

@@ -4,6 +4,7 @@ import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
 import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, shipmentKey, sortByNo } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
+import { fruitTone } from './fruitTone.js';
 
 describe('날짜 표기 (표기 규칙)', () => {
   it('한국어 "10월 20일 (화)", 영어 "Oct 20"', () => {
@@ -146,6 +147,17 @@ describe('홈 상차일로 보기 (2026-10-20 사용자 요청)', () => {
       ['2026-11-03', false, false, ['w3']],
       ['none', false, false, ['p9']]
     ]);
+  });
+});
+
+describe('과일 글자색 (2026-10-20 사용자 요청)', () => {
+  it('배 검정, 샤인머스캣 보라, 단감 진한 주황, 딸기 진한 빨강, 키위 진한 키위색, 나머지는 기본', () => {
+    expect(['배', '신고배', '신화배'].map(fruitTone)).toEqual(['pear', 'pear', 'pear']);
+    expect(fruitTone('샤인머스캣')).toBe('grape');
+    expect(fruitTone('단감')).toBe('persimmon');
+    expect(['딸기', '설향 딸기'].map(fruitTone)).toEqual(['berry', 'berry']);
+    expect(fruitTone('키위')).toBe('kiwi');
+    expect(['곶감', '홍시', '참외', '', null].map(fruitTone)).toEqual(['', '', '', '', '']);
   });
 });
 

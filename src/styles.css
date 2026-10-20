@@ -17,6 +17,12 @@
   --head-bg: #F7F8F7;
   --loaded-bg: #FFDDB0; /* 상차가 끝난 줄(2026-10-20 사용자 요청: 노랑 말고 주황) */
   --loaded-press: #FBC98A;
+  /* 과일 글자색(2026-10-20 사용자 요청). 흰 바탕과 상차 끝난 주황 바탕 모두에서 읽히게 진하게 */
+  --fruit-pear: #18201D;
+  --fruit-grape: #6B2FA8;
+  --fruit-persimmon: #B23F00;
+  --fruit-berry: #B91C1C;
+  --fruit-kiwi: #3F6B0F;
   --danger: #B42318;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   font-family: 'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
@@ -199,6 +205,11 @@ h1, h2, p { margin: 0; }
 .srow .work { font-size: 12px; line-height: 16px; color: var(--muted); overflow-wrap: anywhere; }
 .srow .empty { color: #B7BEBA; font-weight: 400; }
 .srow .fruit { font-size: 16px; line-height: 22px; font-weight: 700; }
+.fruit-pear { color: var(--fruit-pear); }
+.fruit-grape { color: var(--fruit-grape); }
+.fruit-persimmon { color: var(--fruit-persimmon); }
+.fruit-berry { color: var(--fruit-berry); }
+.fruit-kiwi { color: var(--fruit-kiwi); }
 .srow .spec { font-size: 14.5px; line-height: 22px; color: var(--text-3); overflow-wrap: anywhere; }
 /* 산지: 눈에 띄게 검은 바탕 흰 글자(2026-10-19 사용자 요청). 길면 칩 안에서 줄바꿈 */
 .origin-chip {

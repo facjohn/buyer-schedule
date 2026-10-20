@@ -8,6 +8,7 @@ import { fmtKo, fmtKoDateTime, fmtKoYear } from '../lib/dates.js';
 import { buyerCards, loadingDays, shortNo } from '../lib/schedule.js';
 import { navigate, buyerPath } from '../router.js';
 import { Segmented } from '../components/Controls.jsx';
+import { fruitToneClass } from '../lib/fruitTone.js';
 import { IconPlus, IconSheet } from '../components/icons.jsx';
 
 const VIEWS = [
@@ -112,7 +113,7 @@ function LoadingList({ data }) {
                 onClick={() => navigate('/edit/' + encodeURIComponent(r.id))}>
                 <span className="lrow-buyer">{r.buyer}</span>
                 {no && <span className="lrow-no num">No.{no}</span>}
-                <span className="lrow-fruit">{r.fruit || '과일 없음'}</span>
+                <span className={'lrow-fruit' + fruitToneClass(r.fruit)}>{r.fruit || '과일 없음'}</span>
                 {r.ship && <span className="ship-chip">{r.ship}</span>}
                 {r.specKo && <span className="lrow-spec">{r.specKo}</span>}
                 {r.origin && <span className="origin-chip">{r.origin}</span>}
