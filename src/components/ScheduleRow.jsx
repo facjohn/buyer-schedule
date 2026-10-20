@@ -1,9 +1,10 @@
 // 스케줄 한 건. 윗줄 No. · 과일 · 운송 · 스펙 · 산지(검은 바탕 흰 글자 칩, 2026-10-19 사용자 요청),
-// 아랫줄 상차일·ETA(위아래로, 2026-10-16 사용자 요청, ETA 미정 버튼으로 저장한 줄은 날짜 대신 "미정") · 바이어가 · 산지가(작업비는 그 아래 작게). 정렬과 월 묶음은 ETA 기준.
+// 아랫줄 상차일·ETA(위아래로, 2026-10-16 사용자 요청, ETA 미정 버튼으로 저장한 줄은 날짜 대신 "미정") · 바이어가 · 산지가(작업비는 그 아래 작게).
+// 상차일이 오늘보다 앞인 줄(상차 끝남)은 줄 전체를 주황 바탕으로(2026-10-20 사용자 요청: 직원이 한눈에 보게, 노랑 말고 주황, JPG는 그대로).
 import { fmtKo } from '../lib/dates.js';
 import { fmtPrice, fmtWon } from '../lib/money.js';
 import { useLongPress } from '../hooks/useLongPress.js';
-import { shortNo } from '../lib/schedule.js';
+import { loadedPast, shortNo } from '../lib/schedule.js';
 import { IconLock } from './icons.jsx';
 
 /** 여러 가격('17.3/17.8/18.2')은 좁은 칸에서 '/' 뒤에서 줄이 바뀌게 */
@@ -23,14 +24,15 @@ export function TableHead() {
   );
 }
 
-export default function ScheduleRow({ row, currency, onTap, onLong }) {
+export default function ScheduleRow({ row, currency, today, onTap, onLong }) {
   const press = useLongPress(onLong, onTap);
+  const loaded = loadedPast(row, today);
   const price = fmtPrice(row.price, currency);
   const cost = fmtWon(row.cost);
   const work = fmtWon(row.workCost);
   return (
-    <div className="srow" role="button" tabIndex={0}
-      aria-label={`No. ${row.no || ''} ${row.fruit} ${row.specKo} 상차 ${fmtKo(row.loadDate) || '없음'} ETA ${fmtKo(row.eta) || '미정'}`} {...press}>
+    <div className={'srow' + (loaded ? ' loaded' : '')} role="button" tabIndex={0}
+      aria-label={`No. ${row.no || ''} ${row.fruit} ${row.specKo} 상차 ${fmtKo(row.loadDate) || '없음'}${loaded ? '(상차 끝남)' : ''} ETA ${fmtKo(row.eta) || '미정'}`} {...press}>
       <div className={'srow-no num' + (shortNo(row.no).length > 3 ? ' long' : '')} title={String(row.no ?? '')}>
         {shortNo(row.no)}
       </div>

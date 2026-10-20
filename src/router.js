@@ -84,6 +84,8 @@ export function navigate(path) {
   window.history.pushState({ depth: depth() + 1 }, '', '#' + path);
   remember();
   notify();
+  // 새 화면은 맨 위부터 보인다(홈 '상차일로 보기'처럼 긴 목록 아래에서 줄을 눌러도 고치기 화면 머리글이 보이게)
+  try { window.scrollTo(0, 0); } catch { /* 무시 */ }
 }
 
 export function replace(path) {

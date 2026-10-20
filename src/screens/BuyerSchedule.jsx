@@ -86,7 +86,7 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
           <section key={g.key}>
             <h2 className="month">{g.label}</h2>
             {g.rows.map((r) => (
-              <ScheduleRow key={r.id} row={r} currency={buyer.currency}
+              <ScheduleRow key={r.id} row={r} currency={buyer.currency} today={data.today}
                 onTap={() => navigate('/edit/' + encodeURIComponent(r.id))}
                 onLong={() => setMenuRow(r)} />
             ))}

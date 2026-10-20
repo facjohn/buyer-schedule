@@ -31,6 +31,11 @@ export const PERIODS = [
 ];
 
 /** 기간 버튼. 날짜 없는 줄은 '다음 2개월'과 '앞으로 전부'에 넣는다(놓치지 않게). */
+/** 상차일이 오늘보다 앞이면(오늘 상차는 아직) 상차가 끝난 줄. 목록에서 주황 바탕(2026-10-20 사용자 요청, JPG와 상관없음) */
+export function loadedPast(r, today) {
+  return !!(r && r.loadDate && today && r.loadDate < today);
+}
+
 export function filterPeriod(rows, period, today) {
   if (period === 'past') return sortRows(rows.filter((r) => r.eta && r.eta < today), { desc: true });
   const end = period === 'next2' ? addMonths(today, 2) : null;
@@ -125,7 +130,9 @@ function isUpcoming(r, today) {
 }
 
 /**
- * 홈 바이어 카드. 바이어 탭 순서를 바탕으로, 다음 ETA가 가까운 바이어가 위, 일정 없는 바이어는 아래.
+ * 홈 바이어 카드. 다음 상차일이 가까운 바이어가 위(2026-10-20 사용자 요청: 다음 ETA 말고 다음 상차 기준),
+ * 그다음 상차일 미정만 남은 바이어, 상차가 다 끝난(배가 가는 중) 바이어, 앞으로 일정이 없는 바이어. 같으면 바이어 탭 순서.
+ * 남은 선적(예정 수)은 그대로 앞으로의 줄(ETA가 오늘 이후이거나 미정) 기준이다.
  * 바이어 탭에 없는데 스케줄에만 있는 이름도 카드로 보인다(시트에서 이름을 바꾼 경우 놓치지 않게).
  */
 export function buyerCards(data) {
@@ -140,27 +147,61 @@ export function buyerCards(data) {
     byName.get(r.buyer).rows.push(r);
   }
   const cards = [...byName.values()].map(({ buyer, rows }, order) => {
-    const sorted = sortRows(rows);
-    const first = sorted[0];
-    const nextRows = first ? sorted.filter((r) => shipmentKey(r) === shipmentKey(first)) : [];
+    const byNo = sortByNo(rows);
+    // 다음 상차: 상차일이 오늘이거나 그 뒤인 가장 이른 줄(같은 날이면 No. 순). 없으면 상차일이 빈 줄(미정).
+    // 상차일이 오늘보다 앞인 줄은 이미 실은 것(목록에서 주황)이라 다음 상차가 아니다.
+    const toLoad = byNo.filter((r) => r.loadDate && r.loadDate >= today).sort((a, b) => cmp(a.loadDate, b.loadDate));
+    const pool = toLoad.length ? toLoad : byNo.filter((r) => !r.loadDate);
+    const first = pool[0];
+    // 과일은 그 선적(같은 No.)의 앞으로의 줄 전부에서 모은다(같은 컨테이너에 상차일을 안 적은 줄이 있어도 빠지지 않게)
+    const nextRows = first ? byNo.filter((r) => shipmentKey(r) === shipmentKey(first)) : [];
     return {
       buyer,
       order,
       next: first ? {
-        eta: first.eta,
+        loadDate: first.loadDate || '',
         fruits: [...new Set(nextRows.map((r) => r.fruit))].join('·'),
         ship: first.ship
       } : null,
+      allLoaded: rows.length > 0 && !first, // 앞으로의 선적이 있는데 모두 상차가 끝남
       shipments: new Set(rows.map(shipmentKey)).size
     };
   });
-  // 다음 ETA가 가까운 순 → ETA 미정만 있는 바이어 → 일정 없는 바이어
-  const rank = (c) => (!c.next ? 2 : c.next.eta ? 0 : 1);
+  // 다음 상차가 가까운 순 → 상차일 미정 → 상차 다 끝남 → 일정 없는 바이어
+  const rank = (c) => (c.next ? (c.next.loadDate ? 0 : 1) : c.allLoaded ? 2 : 3);
   return cards.sort((a, b) => {
     if (rank(a) !== rank(b)) return rank(a) - rank(b);
-    if (rank(a) === 0 && a.next.eta !== b.next.eta) return cmp(a.next.eta, b.next.eta);
+    if (rank(a) === 0 && a.next.loadDate !== b.next.loadDate) return cmp(a.next.loadDate, b.next.loadDate);
     return a.order - b.order;
   });
+}
+
+/**
+ * 홈 '상차일로 보기'(2026-10-20 사용자 요청): 앞으로의 줄(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩, 날짜마다 묶는다.
+ * 같은 날은 바이어 탭 순서 → No. 순. 이미 실은 줄(상차일 < 오늘)도 도착 전이면 맨 위에 보이고(loaded, 주황), 상차일이 빈 줄은 맨 뒤 묶음.
+ * [{ key, date, isToday, loaded, rows }]
+ */
+export function loadingDays(data) {
+  const today = data.today;
+  const orderOf = new Map((data.buyers || []).map((b, i) => [b.name, i]));
+  const ord = (r) => (orderOf.has(r.buyer) ? orderOf.get(r.buyer) : orderOf.size);
+  const rows = sortByNo((data.rows || []).filter((r) => isUpcoming(r, today)));
+  rows.sort((a, b) => {
+    if (!a.loadDate !== !b.loadDate) return a.loadDate ? -1 : 1;
+    if (a.loadDate !== b.loadDate) return cmp(a.loadDate, b.loadDate);
+    return ord(a) - ord(b) || cmp(a.buyer, b.buyer);
+  });
+  const days = [];
+  for (const r of rows) {
+    const key = r.loadDate || 'none';
+    let d = days[days.length - 1];
+    if (!d || d.key !== key) {
+      d = { key, date: r.loadDate || '', isToday: !!r.loadDate && r.loadDate === today, loaded: loadedPast(r, today), rows: [] };
+      days.push(d);
+    }
+    d.rows.push(r);
+  }
+  return days;
 }
 
 /** 숫자만 쓰는 옛 번호의 예상값: 그 바이어·해의 최댓값(지운 번호 포함) + 1 */

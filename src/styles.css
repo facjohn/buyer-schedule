@@ -15,6 +15,8 @@
   --input-border: #D5DBD7;
   --line: #EEF1EF;
   --head-bg: #F7F8F7;
+  --loaded-bg: #FFDDB0; /* 상차가 끝난 줄(2026-10-20 사용자 요청: 노랑 말고 주황) */
+  --loaded-press: #FBC98A;
   --danger: #B42318;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   font-family: 'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
@@ -82,9 +84,32 @@ h1, h2, p { margin: 0; }
 .input.readonly { display: flex; align-items: center; font-size: 17px; font-weight: 700; background: var(--head-bg); }
 .input::placeholder, .input input::placeholder { color: #9AA39F; }
 
-.search { display: flex; align-items: center; gap: 10px; margin: 0 20px; width: auto; border-radius: 14px; color: var(--muted); }
-.search input { flex: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; font-size: 16px; color: var(--text); }
-.search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+/* 홈 맨 위 '바이어별 보기 / 상차일로 보기'(2026-10-20 사용자 요청, 바이어 검색 자리) */
+.view-switch { margin: 0 20px; }
+.view-switch .seg-btn { min-height: 44px; font-size: 15px; }
+/* 상차일로 보기: 날짜 제목 + 한 줄씩 */
+.loadlist { margin-top: 12px; background: #fff; border-top: 1px solid var(--border); min-height: 50vh; padding-bottom: 24px; }
+.lday {
+  display: flex; align-items: center; gap: 6px; padding: 14px 16px 4px;
+  font-size: 14px; line-height: 20px; font-weight: 700; color: var(--brand);
+}
+.lday-tag { padding: 0 6px; border-radius: 6px; font-size: 11.5px; line-height: 20px; font-weight: 700; }
+.lday-tag.today { background: var(--brand); color: #fff; }
+.lday-tag.done { background: var(--loaded-bg); color: var(--cost); }
+.lrow {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; width: 100%; min-height: 48px; padding: 10px 16px;
+  border: 0; border-bottom: 1px solid var(--line); background: #fff; color: var(--text); text-align: left;
+}
+.lrow:active { background: var(--head-bg); }
+.lrow.loaded { background: var(--loaded-bg); }
+.lrow.loaded:active { background: var(--loaded-press); }
+.lrow-buyer {
+  max-width: 100%; padding: 0 6px; border-radius: 6px; background: var(--tile-bg, var(--line)); color: var(--tile-fg, var(--text));
+  font-size: 13px; line-height: 24px; font-weight: 700; overflow-wrap: anywhere;
+}
+.lrow-no { font-size: 13px; line-height: 22px; font-weight: 700; color: var(--text-2); white-space: nowrap; }
+.lrow-fruit { font-size: 15px; line-height: 22px; font-weight: 700; }
+.lrow-spec { font-size: 13.5px; line-height: 22px; color: var(--text-3); overflow-wrap: anywhere; }
 
 .section-title {
   display: flex; align-items: center; justify-content: space-between; min-height: 44px;
@@ -152,6 +177,12 @@ h1, h2, p { margin: 0; }
 }
 .srow[role='button'] { cursor: pointer; }
 .srow[role='button']:active, .srow[role='button']:focus-visible { background: var(--head-bg); }
+/* 상차일이 지난 줄은 주황 바탕(누르면 조금 진하게) */
+.srow.loaded { background: var(--loaded-bg); }
+.srow.loaded[role='button']:active, .srow.loaded[role='button']:focus-visible { background: var(--loaded-press); }
+/* 주황 위에서는 흐린 글자(이름표·작업비·빈칸 —)를 한 단계 진하게(읽기 쉽게) */
+.srow.loaded .dlabel, .srow.loaded .work { color: var(--text-2); }
+.srow.loaded .empty { color: #8F8778; }
 .srow-no { font-size: 16px; line-height: 22px; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 .srow-no.long { font-size: 13px; line-height: 18px; letter-spacing: -0.3px; padding-top: 2px; } /* 인보이스 번호 26-01 */
 .srow-top { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 2px; min-width: 0; }

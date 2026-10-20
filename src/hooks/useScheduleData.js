@@ -1,8 +1,9 @@
 // list를 읽어 두고 30초마다 다시 읽는다. 앱이 가려져 있으면 쉬고, 다시 보이면 바로 읽는다.
 // 마지막으로 받은 데이터는 이 폰에 남겨 두어 다음에 열 때 바로 보인다(코드가 거절되면 지움).
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { call, AuthError } from '../api.js';
 import { REFRESH_MS } from '../config.js';
+import { todayKst } from '../lib/dates.js';
 
 const CACHE_KEY = 'bs.cache';
 
@@ -95,5 +96,10 @@ export function useScheduleData(code, onAuthFail) {
     };
   }, [code, refresh]);
 
-  return { data, fetchedAt, error, loading, refresh };
+  // 오늘 날짜는 창구(서울 기준)가 준 값을 쓰되, 이 폰에 남겨 둔 옛 응답이라 하루 이상 지났으면 폰의 서울 날짜로 올린다
+  // (오프라인으로 다음 날 열었을 때 상차 끝남 주황·지난 일정이 하루 늦지 않게, 2026-10-20 검토).
+  const day = todayKst();
+  const view = useMemo(() => (data && (!data.today || data.today < day) ? { ...data, today: day } : data), [data, day]);
+
+  return { data: view, fetchedAt, error, loading, refresh };
 }
