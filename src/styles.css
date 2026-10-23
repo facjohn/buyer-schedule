@@ -199,7 +199,8 @@ h1, h2, p { margin: 0; }
 .srow-dates { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 8px; row-gap: 0; align-items: center; }
 .srow-dates .dlabel { font-size: 12px; line-height: 22px; font-weight: 600; color: var(--muted); }
 .srow-dates .dval { display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; min-width: 0; }
-.srow .load { font-size: 14px; line-height: 22px; color: var(--text-2); white-space: nowrap; }
+/* 상차일은 굵게, ETA는 보통 굵기(2026-10-23 사용자 요청) */
+.srow .load { font-size: 15px; line-height: 22px; font-weight: 700; color: var(--text); white-space: nowrap; }
 .srow-price { text-align: right; font-size: 15px; line-height: 22px; font-weight: 700; }
 .srow-cost { text-align: right; font-size: 14px; line-height: 22px; color: var(--text-2); }
 .srow-price.small, .srow-cost.small { font-size: 13px; }
@@ -218,7 +219,7 @@ h1, h2, p { margin: 0; }
   display: inline-block; max-width: 100%; padding: 0 7px; border-radius: 6px; background: var(--text); color: #fff;
   font-size: 12.5px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere;
 }
-.srow .eta { font-size: 15px; line-height: 22px; font-weight: 600; white-space: nowrap; }
+.srow .eta { font-size: 14px; line-height: 22px; font-weight: 400; color: var(--text-2); white-space: nowrap; }
 .ship-chip {
   height: 22px; padding: 0 7px; border-radius: 6px; background: var(--line); color: var(--text-3);
   font-size: 12.5px; line-height: 22px; font-weight: 600; white-space: nowrap;
