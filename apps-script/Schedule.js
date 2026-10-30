@@ -476,8 +476,9 @@ function save_(member, items) {
       if (item.id || !isSaveKey_(item.key)) return item;
       var made = madeIdFor_(cache, props, item.key);
       var row = made ? byId[made] : null;
+      // 이미 만든 줄이면 다시 쓰지 않는다(그사이 고친 값을 처음 값으로 되돌리지 않게, 2026-10-30 검토)
       return row && !toBool_(row.deleted)
-        ? { id: made, key: item.key, join: item.join, no: item.no, changes: item.changes }
+        ? { id: made, key: item.key, changes: {} }
         : item;
     });
 

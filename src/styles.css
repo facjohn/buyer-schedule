@@ -124,9 +124,16 @@ h1, h2, p { margin: 0; }
   margin: 6px 20px 0; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--text-2);
 }
 /* 바이어 바둑판: 두 칸씩 정사각형, 모두 흰색(2026-10-20 사용자 요청: 바이어마다 다른 색은 헷갈림 → 초록 → 노랑은 촌스러움 → 흰색) */
-.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 20px 24px; }
+/* 바둑판 칸 크기는 모두 같고 폰 폭에 맞춘다(2026-10-30 사용자 요청 "바둑판 크기는 모두 동일해야하고 핸드폰 기종마다 맞춰").
+   칸 비율(aspect-ratio)은 아이폰 사파리가 줄 높이에 맞춰 칸 폭을 다시 계산해 칸이 넘치고 들쭉날쭉해져서 쓰지 않는다.
+   대신 바둑판 폭(컨테이너 단위 cqw)으로 칸 한 변(--tile-w)을 계산해 줄 높이로 쓴다 → 모든 칸이 같은 정사각형 */
+.tiles-wrap { container-type: inline-size; padding: 0 20px 24px; }
+.tiles {
+  --cols: 2; --gap: 12px; --tile-w: calc((100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols));
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-auto-rows: var(--tile-w); gap: var(--gap);
+}
 .tile {
-  aspect-ratio: 1 / 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+  height: 100%; min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: stretch; gap: 2px;
   padding: 14px; border: 0; border-radius: 20px; background: #fff; color: var(--text); text-align: left;
   box-shadow: 0 1px 2px rgba(24, 32, 29, 0.05), inset 0 0 0 1px rgba(24, 32, 29, 0.07);
 }
@@ -406,7 +413,7 @@ h1, h2, p { margin: 0; }
 .tile.tile-tbd .tile-country { color: var(--text-3); font-weight: 600; }
 /* @미정 칸: 왼쪽 이름·다음 상차, 오른쪽을 미정 수가 크게 차지(2026-10-30 사용자 요청: 알림 대신 숫자를 크게).
    숫자 크기는 칸 폭(cqw)에 맞추고 자릿수(--d)가 늘면 작아진다 */
-.tile.tile-tbd { flex-direction: row; align-items: stretch; gap: 4px; container-type: inline-size; }
+.tile.tile-tbd { flex-direction: row; align-items: stretch; gap: 4px; }
 .tbd-left { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
 .tbd-left .tile-next { margin-top: auto; }
 .tile.tile-tbd .tile-date { font-size: 14px; line-height: 19px; white-space: normal; }
@@ -416,12 +423,11 @@ h1, h2, p { margin: 0; }
   color: #A8101F; font-size: 13px; line-height: 16px; font-weight: 700;
 }
 .tbd-count .num {
-  font-size: 64px; font-size: calc(58cqw / (0.55 + 0.45 * var(--d, 1)));
+  font-size: 64px; font-size: calc(var(--tile-w) * 0.58 / (0.55 + 0.45 * var(--d, 1)));
   line-height: 0.9; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
 }
 /* 바둑판 칸 안 미정 알림(2026-10-30 사용자 요청: 알람처럼 눈에 띄게) */
-.tile-alerts { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 4px; min-width: 0; }
-.tiles > .tile { align-self: stretch; }
+.tile-alerts { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; min-width: 0; }
 .tile-alerts .tbd-chip { font-size: 12px; line-height: 22px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
 /* 바이어 스케줄 아래 버튼 두 개(JPG로 보내기 · 추가) */
@@ -444,8 +450,12 @@ h1, h2, p { margin: 0; }
   .view-switch { margin: 0 12px; }
   .view-switch .seg-btn { font-size: 14px; }
   .section-title { margin: 6px 12px 0; }
-  .tiles { gap: 10px; padding: 0 12px 20px; }
-  .tile { padding: 12px; border-radius: 16px; }
+  .tiles-wrap { padding: 0 12px 20px; }
+  .tiles { --gap: 10px; }
+  .tile { padding: 11px; border-radius: 16px; }
+  .tile-label { font-size: 11.5px; line-height: 16px; }
+  .tile-what { font-size: 12px; line-height: 16px; }
+  .tile-alerts .tbd-chip { font-size: 11px; line-height: 20px; padding: 0 6px 0 5px; }
   .tile-name { font-size: 16px; line-height: 21px; }
   .tile-date { font-size: 14px; }
   .srow { grid-template-columns: 34px minmax(0, 1fr) 64px 74px; column-gap: 6px; padding-left: 12px; padding-right: 12px; }
@@ -460,7 +470,7 @@ h1, h2, p { margin: 0; }
   .screen, .bottom-bar, .sheet { max-width: 760px; }
   .form-error.floating { max-width: 728px; }
   .toast { max-width: min(560px, calc(100vw - 32px)); }
-  .tiles { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .tiles { --cols: 3; }
   .srow { grid-template-columns: 48px minmax(0, 1fr) 120px 130px; column-gap: 12px; }
   .srow-dates { grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; }
   .row-2.buyer-no { grid-template-columns: minmax(0, 1fr) 220px; }
@@ -471,7 +481,7 @@ h1, h2, p { margin: 0; }
 @media (min-width: 840px) {
   .screen, .bottom-bar, .sheet { max-width: 1080px; }
   .form-error.floating { max-width: 728px; }
-  .tiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  .tiles { --cols: 4; --gap: 14px; }
   .srow { grid-template-columns: 56px minmax(0, 1fr) 150px 160px; column-gap: 16px; padding-left: 24px; padding-right: 24px; }
   .srow-dates { grid-template-columns: 56px minmax(0, 1fr); column-gap: 16px; }
   .month, .filters, .lday, .lrow, .period-note { padding-left: 24px; padding-right: 24px; }
@@ -496,7 +506,7 @@ html[data-nav="fade"]::view-transition-old(root), html[data-nav="fade"]::view-tr
 @keyframes vt-pop-new { from { transform: translateX(-30%); filter: brightness(0.94); } }
 /* 손으로 밀어 뒤로 간 뒤: 앞 화면이 왼쪽에서 들어온다(화면 조각마다, 고정된 아래 띠가 튀지 않게) */
 .screen.swipe-arrive > * { animation: vt-pop-new 0.36s cubic-bezier(0.32, 0.72, 0, 1); }
-html.swiping, html.swiping body { overflow-x: hidden; }
+html.swiping { overflow-x: clip; }
 #root { will-change: auto; }
 
 /* 앞으로 밀기: 오른쪽 끝에서 따라 나오는 동그라미 */

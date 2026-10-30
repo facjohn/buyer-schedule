@@ -69,6 +69,7 @@ function BuyerTiles({ data }) {
   return (
     <>
       <div className="section-title">다음 상차 가까운 순</div>
+      <div className="tiles-wrap">
       <div className={'tiles' + (intro ? ' tiles-intro' : '')}>
         {cards.map((c, i) => {
           const next = (
@@ -110,7 +111,7 @@ function BuyerTiles({ data }) {
                   <span>예정</span>
                 </span>
               </div>
-              {c.buyer.country && <div className="tile-country">{c.buyer.country}</div>}
+              {c.buyer.country && !(c.tbdBuyer > 0 || c.tbdOrigin > 0) && <div className="tile-country">{c.buyer.country}</div>}
               {/* 미정 알림: 빨간 꼬리표(깜빡이는 테두리)로 칸 안에 "산지 미정 1건"(2026-10-30 사용자 요청) */}
               {(c.tbdBuyer > 0 || c.tbdOrigin > 0) && (
                 <div className="tile-alerts">
@@ -126,6 +127,7 @@ function BuyerTiles({ data }) {
           <IconPlus size={28} />
           <span>바이어 추가</span>
         </button>
+      </div>
       </div>
     </>
   );

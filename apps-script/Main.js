@@ -44,7 +44,14 @@ function route_(req, member) {
  * 폰에서 저장이 빨라진다(2026-10-30 사용자 요청 "스케쥴 저장할때 로딩시간이 너무 오래걸려").
  */
 function withList_(res, req, member) {
-  if (res && res.ok && req.withList) res.list = list_(member);
+  if (res && res.ok && req.withList) {
+    // 저장은 이미 끝났다. 목록 만들기가 실패해도 저장 실패로 알리지 않는다(앱이 따로 다시 읽음, 2026-10-30 검토)
+    try {
+      res.list = list_(member);
+    } catch (err) {
+      res.list = null;
+    }
+  }
   return res;
 }
 

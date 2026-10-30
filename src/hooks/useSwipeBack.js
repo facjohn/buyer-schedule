@@ -46,6 +46,7 @@ export function useSwipeNav(enabled, opts) {
     document.body.appendChild(dot);
 
     let st = null;
+    let cleanupTimer = 0; // 튕겨 돌아온 뒤 치우기(다음 밀기가 시작되면 취소)
     const width = () => window.innerWidth || 375;
 
     let moved = [];
@@ -64,6 +65,16 @@ export function useSwipeNav(enabled, opts) {
       moved = [];
       document.documentElement.classList.remove('swiping');
     };
+    // 제자리로 튕겨 돌아오기('동작 줄이기'면 바로)
+    const springBack = () => {
+      clearTimeout(cleanupTimer);
+      if (reduceMotion()) {
+        clearPage();
+        return;
+      }
+      setPage(0, true, SPRING, 380);
+      cleanupTimer = setTimeout(clearPage, 400);
+    };
     const showDot = (d) => {
       const x = Math.min(d, FWD_TRIGGER + 20);
       dot.style.transform = `translate(${48 - x}px, -50%)`;
@@ -80,7 +91,8 @@ export function useSwipeNav(enabled, opts) {
     const onStart = (e) => {
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
-      if (e.target.closest && e.target.closest('input, textarea, select, .sheet')) return;
+      if (e.target.closest && e.target.closest('input, textarea, select, .sheet, .sheet-backdrop')) return;
+      clearTimeout(cleanupTimer);
       const o = ref.current;
       const w = width();
       if (o.canBack && t.clientX < w / 2) st = { mode: 'back', x: t.clientX, y: t.clientY, t0: Date.now(), moved: false, dx: 0 };
@@ -99,7 +111,14 @@ export function useSwipeNav(enabled, opts) {
         hideDot();
         return;
       }
+      st.dy = dy;
       if (st.mode === 'back') {
+        // 밀다가 위아래로 더 많이 움직이면 스크롤로 보고 제자리로
+        if (st.moved && dy > Math.max(30, Math.abs(dx))) {
+          st = null;
+          springBack();
+          return;
+        }
         if (!st.moved && dx > 10 && dx > dy * 1.5) {
           st.moved = true;
           document.documentElement.classList.add('swiping');
@@ -124,15 +143,10 @@ export function useSwipeNav(enabled, opts) {
       if (!s.moved) return;
       const w = width();
       const v = s.dx / Math.max(1, Date.now() - s.t0); // px/ms
-      const go = s.dx > w * 0.35 || (v > 0.5 && s.dx > 40);
+      const go = (s.dx > w * 0.35 || (v > 0.5 && s.dx > 40)) && (s.dy || 0) < s.dx * 0.7;
       if (!go || !confirmLeave()) {
-        // 덜 밀었으면(또는 나가지 않기로 했으면) 제자리로 튕겨 돌아온다('동작 줄이기'면 바로)
-        if (reduceMotion()) {
-          clearPage();
-          return;
-        }
-        setPage(0, true, SPRING, 380);
-        setTimeout(clearPage, 400);
+        // 덜 밀었으면(또는 나가지 않기로 했으면) 제자리로 튕겨 돌아온다
+        springBack();
         return;
       }
       // 그대로 오른쪽으로 빠져나가고, 앞 화면이 왼쪽에서 들어온다
@@ -165,13 +179,7 @@ export function useSwipeNav(enabled, opts) {
     };
 
     const onCancel = () => {
-      if (st && st.mode === 'back' && st.moved) {
-        if (reduceMotion()) clearPage();
-        else {
-          setPage(0, true, SPRING, 380);
-          setTimeout(clearPage, 400);
-        }
-      }
+      if (st && st.mode === 'back' && st.moved) springBack();
       st = null;
       hideDot();
     };
@@ -185,6 +193,7 @@ export function useSwipeNav(enabled, opts) {
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
       document.removeEventListener('touchcancel', onCancel);
+      clearTimeout(cleanupTimer);
       dot.remove();
       clearPage();
     };

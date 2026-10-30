@@ -86,8 +86,9 @@ function saveScroll() {
   scrollPos.set(posKey(), window.scrollY);
 }
 function restoreScroll() {
-  const y = scrollPos.get(posKey()) || 0;
-  window.scrollTo(0, y);
+  // 기억한 위치가 있을 때만(없으면 브라우저가 되살린 위치를 그대로 둔다)
+  const key = posKey();
+  if (scrollPos.has(key)) window.scrollTo(0, scrollPos.get(key));
 }
 
 // ── 앞으로 가기 ────────────────────────────────
@@ -134,6 +135,9 @@ function onPop(e) {
 
 window.addEventListener('popstate', onPop);
 window.addEventListener('hashchange', () => {
+  // 뒤로·앞으로는 popstate(onPop)가 이미 움직임과 함께 바꿨다. 같은 주소의 hashchange는 넘긴다(2026-10-30 검토:
+  // 여기서 먼저 바꾸면 화면 넘김의 앞 화면 사진이 새 화면으로 찍혀 움직임이 틀어짐)
+  if (window.location.hash === last.hash) return;
   takeCodeOnNavigate();
   remember();
   notify();

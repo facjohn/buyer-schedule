@@ -424,16 +424,18 @@ describe('save', () => {
     expect(sh.cellWrites).toHaveLength(0);
   });
 
-  it('응답만 끊긴 새 줄을 같은 표시로 다시 보내면 줄이 하나만 생기고, 고친 값은 반영된다', () => {
+  it('응답만 끊긴 새 줄을 같은 표시로 다시 보내면 줄이 하나만 생기고, 그사이 고친 값을 덮지 않는다 (2026-10-30 기다리지 않는 저장)', () => {
     const w = world();
     const item = { key: 'save-key-123', changes: { buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', eta: iso(daysFromNow(40)), cost: 16000 } };
     const first = w.call({ action: 'save', code: CODE_1, items: [item] });
-    const again = w.call({ action: 'save', code: CODE_1, items: [{ ...item, changes: { ...item.changes, cost: 16500 } }] });
+    // 그사이 다른 사람이 산지가를 고침
+    w.call({ action: 'save', code: CODE_2, items: [{ id: first.saved[0].id, changes: { cost: 17000 } }] });
+    const again = w.call({ action: 'save', code: CODE_1, items: [item] });
     expect(again.saved[0].id).toBe(first.saved[0].id);
     expect(again.saved[0].no).toBe(first.saved[0].no);
     const made = w.read('schedule').filter((r) => r.id === first.saved[0].id);
     expect(made).toHaveLength(1);
-    expect(made[0].cost).toBe(16500);
+    expect(made[0].cost).toBe(17000);
     expect(w.read('schedule').filter((r) => r.id)).toHaveLength(5);
   });
 
@@ -495,13 +497,13 @@ describe('시트에서 복사해 붙인 줄의 No. (규칙 5)', () => {
     expect(w.call({ action: 'list', code: CODE_1 }).rows.find((r) => r.id === 'p2').no).toBe(null);
   });
 
-  it('응답만 끊긴 새 줄을 다시 보내며 같은 컨테이너로 바꾸면 그 컨테이너로 옮긴다', () => {
+  it('응답만 끊긴 새 줄을 다시 보내면 이미 만든 줄 그대로(번호·칸을 다시 바꾸지 않는다)', () => {
     const w = world();
     const changes = { buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', eta: iso(daysFromNow(10)) };
     const first = w.call({ action: 'save', code: CODE_1, items: [{ key: 'retry-key-0001', changes }] });
     expect(first.saved[0].no).not.toBe(1);
     const again = w.call({ action: 'save', code: CODE_1, items: [{ key: 'retry-key-0001', join: { no: 1, noYear: S }, changes: { ...changes, memo: '' } }] });
-    expect(again.saved[0]).toMatchObject({ id: first.saved[0].id, no: 1, noYear: S });
+    expect(again.saved[0]).toMatchObject({ id: first.saved[0].id, no: first.saved[0].no });
   });
 
   it('메뉴의 id·No. 정리는 기다리지 않고 바로 붙인다', () => {
