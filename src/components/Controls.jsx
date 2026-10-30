@@ -111,12 +111,12 @@ export function TextField({ value, onChange, placeholder, label, ...rest }) {
 }
 
 /** 고르기 칸(폰의 기본 고르기 화면을 쓴다). 지금 값이 목록에 없으면 그대로 보이게 맨 위에 넣는다. */
-export function SelectField({ value, onChange, options, label }) {
+export function SelectField({ value, onChange, options, label, className = '' }) {
   const all = value && !options.some((o) => o.value === value)
     ? [{ value, label: value }, ...options]
     : options;
   return (
-    <div className="input select-input">
+    <div className={'input select-input' + (className ? ' ' + className : '')}>
       <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}>
         {all.map((o) => (
           <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>

@@ -11,6 +11,8 @@ import { buyerCards, loadingDays, seasonLabel, shortNo } from '../lib/schedule.j
 import { navigate, buyerPath } from '../router.js';
 import { Chip, Segmented } from '../components/Controls.jsx';
 import { fruitToneClass } from '../lib/fruitTone.js';
+import { isTbdBuyer, isTbdOrigin, isTbdRow } from '../lib/undecided.js';
+import TbdChip from '../components/TbdChip.jsx';
 import { IconPlus, IconSheet } from '../components/icons.jsx';
 
 const VIEWS = [
@@ -60,7 +62,7 @@ function BuyerTiles({ data }) {
       <div className="tiles">
         {cards.map((c) => {
           return (
-            <button key={c.buyer.name} type="button" className="tile"
+            <button key={c.buyer.name} type="button" className={'tile' + (c.tbd ? ' tile-tbd' : '')}
               onClick={() => navigate(buyerPath(c.buyer.name))}>
               <div className="tile-top">
                 <div className="tile-name">{c.buyer.name}</div>
@@ -69,7 +71,8 @@ function BuyerTiles({ data }) {
                   <span>예정</span>
                 </span>
               </div>
-              {c.buyer.country && <div className="tile-country">{c.buyer.country}</div>}
+              {c.tbd ? <div className="tile-country">바이어·산지 미정</div>
+                : c.buyer.country && <div className="tile-country">{c.buyer.country}</div>}
               <div className="tile-next">
                 {c.next ? (
                   <>
@@ -115,15 +118,15 @@ function LoadingList({ data }) {
           {d.rows.map((r) => {
             const no = shortNo(r.no);
             return (
-              <button key={r.id} type="button" className="lrow"
+              <button key={r.id} type="button" className={'lrow' + (isTbdRow(r) ? ' tbd' : '')}
                 aria-label={`${r.buyer} No. ${r.no || ''} ${r.fruit} ${r.specKo} 상차 ${fmtKo(d.date) || '미정'}`}
                 onClick={() => navigate('/edit/' + encodeURIComponent(r.id))}>
-                <span className="lrow-buyer">{r.buyer}</span>
+                {isTbdBuyer(r.buyer) ? <TbdChip>바이어 미정</TbdChip> : <span className="lrow-buyer">{r.buyer}</span>}
                 {no && <span className="lrow-no num">No.{no}</span>}
                 <span className={'lrow-fruit' + fruitToneClass(r.fruit)}>{r.fruit || '과일 없음'}</span>
                 {r.ship && <span className="ship-chip">{r.ship}</span>}
                 {r.specKo && <span className="lrow-spec">{r.specKo}</span>}
-                {r.origin && <span className="origin-chip">{r.origin}</span>}
+                {isTbdOrigin(r.origin) ? <TbdChip>산지 미정</TbdChip> : r.origin && <span className="origin-chip">{r.origin}</span>}
               </button>
             );
           })}

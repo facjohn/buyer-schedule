@@ -4,6 +4,7 @@
 import { useMemo, useState } from 'react';
 import { filterPeriod, fruitsInOrder, groupInNoOrder, seasonLabel, seasonStartIso, sortByNo, sortRecentFirst } from '../lib/schedule.js';
 import { fmtKo } from '../lib/dates.js';
+import { isTbdBuyer, rowsForBuyer } from '../lib/undecided.js';
 import { useRemembered } from '../lib/uiMemory.js';
 import { navigate, back } from '../router.js';
 import ScheduleRow, { TableHead } from '../components/ScheduleRow.jsx';
@@ -35,7 +36,9 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const buyer = data.buyers.find((b) => b.name === buyerName) || { name: buyerName, currency: 'USD' };
-  const mine = useMemo(() => data.rows.filter((r) => r.buyer === buyerName), [data, buyerName]);
+  // @미정은 바이어 미정 줄과 산지 미정 줄(다른 바이어 줄도)을 모아 보인다(2026-10-30 사용자 요청)
+  const tbdView = isTbdBuyer(buyerName);
+  const mine = useMemo(() => rowsForBuyer(data.rows, buyerName), [data, buyerName]);
   const inPeriod = useMemo(() => filterPeriod(mine, period, data.today), [mine, period, data.today]);
   // 과일 버튼: 지금 보이는 일정에 있는 과일만, 품목 탭 순서로
   const fruits = useMemo(() => fruitsInOrder(inPeriod, data.fruits), [inPeriod, data.fruits]);
@@ -50,7 +53,7 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
   };
 
   // 가격 조건(FOB/CIF)은 보이지 않는다(2026-10-19 사용자 요청)
-  const sub = [buyer.country, buyer.currency].filter(Boolean).join(' · ');
+  const sub = tbdView ? '바이어·산지 미정을 빨리 정해 주세요' : [buyer.country, buyer.currency].filter(Boolean).join(' · ');
 
   return (
     <div className="screen page with-bottom">
@@ -92,7 +95,7 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
           <section key={g.key}>
             <h2 className="month">{g.label}</h2>
             {g.rows.map((r) => (
-              <ScheduleRow key={r.id} row={r} currency={buyer.currency} today={data.today}
+              <ScheduleRow key={r.id} row={r} currency={buyerCurrency(data, r.buyer, buyer)} today={data.today} showBuyer={tbdView}
                 onTap={() => navigate('/edit/' + encodeURIComponent(r.id))}
                 onLong={() => setMenuRow(r)} />
             ))}
@@ -105,11 +108,14 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
         )}
       </div>
 
-      <div className="bottom-bar two-even">
-        <button type="button" className="btn-secondary"
-          onClick={() => navigate('/jpg/' + encodeURIComponent(buyerName))}>
-          <IconImage size={20} /> JPG로 보내기
-        </button>
+      <div className={'bottom-bar' + (tbdView ? '' : ' two-even')}>
+        {/* @미정은 바이어에게 보낼 JPG가 없다 */}
+        {!tbdView && (
+          <button type="button" className="btn-secondary"
+            onClick={() => navigate('/jpg/' + encodeURIComponent(buyerName))}>
+            <IconImage size={20} /> JPG로 보내기
+          </button>
+        )}
         <button type="button" className="btn-primary"
           onClick={() => navigate('/new?buyer=' + encodeURIComponent(buyerName))}>
           <IconPlus size={22} /> 추가
@@ -131,4 +137,10 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
       )}
     </div>
   );
+}
+
+/** 줄의 바이어가는 그 줄 바이어의 통화로(@미정 화면에는 여러 바이어 줄이 섞인다) */
+function buyerCurrency(data, name, fallback) {
+  const b = data.buyers.find((x) => x.name === name);
+  return (b && b.currency) || fallback.currency || 'USD';
 }

@@ -5,6 +5,7 @@ import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
 import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, seasonLabel, seasonStartIso, shipmentKey, sortByNo, sortRecentFirst } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
 import { fruitTone } from './fruitTone.js';
+import { isTbdBuyer, isTbdOrigin, isTbdRow, rowsForBuyer, buyerLabel } from './undecided.js';
 
 describe('날짜 표기 (표기 규칙)', () => {
   it('한국어 "10월 20일 (화)", 영어 "Oct 20"', () => {
@@ -182,6 +183,42 @@ describe('홈 상차일로 보기 (2026-10-20 사용자 요청)', () => {
       ['2026-10-15', ['h7']],
       ['2026-10-10', ['old']]
     ]);
+  });
+});
+
+describe('바이어 미정·산지 미정 (2026-10-30 사용자 요청)', () => {
+  const today = '2026-10-30';
+  const rows = [
+    { id: 't1', buyer: '@미정', no: 1, noYear: 2026, fruit: '샤인머스캣', eta: '', loadDate: '2026-11-05', origin: '' },
+    { id: 'k9', buyer: '킹고', no: 9, noYear: 2026, fruit: '샤인머스캣', eta: '2026-11-10', loadDate: '2026-11-03', origin: '미정' },
+    { id: 'k8', buyer: '킹고', no: 8, noYear: 2026, fruit: '배', eta: '2026-11-19', loadDate: '2026-11-16', origin: '꿀배' },
+    { id: 'h1', buyer: '하워드', no: 1, noYear: 2026, fruit: '배', eta: '2026-11-02', loadDate: '2026-10-31', origin: '산지 미정' }
+  ];
+  it('미정 알아보기', () => {
+    expect(isTbdBuyer('@미정')).toBe(true);
+    expect(isTbdBuyer('킹고')).toBe(false);
+    expect(['미정', '산지 미정', '산지미정', ' 미정 '].map(isTbdOrigin)).toEqual([true, true, true, true]);
+    expect(['', '?????', '미정농장', null].map(isTbdOrigin)).toEqual([false, false, false, false]);
+    expect(rows.map(isTbdRow)).toEqual([true, true, false, true]);
+    expect(buyerLabel('@미정')).toBe('바이어 미정');
+    expect(buyerLabel('킹고')).toBe('킹고');
+  });
+  it('@미정 화면에는 바이어 미정 줄과 산지 미정 줄(다른 바이어 줄도) 모두, 원래 바이어 화면에도 산지 미정 줄이 그대로', () => {
+    expect(rowsForBuyer(rows, '@미정').map((r) => r.id)).toEqual(['t1', 'k9', 'h1']);
+    expect(rowsForBuyer(rows, '킹고').map((r) => r.id)).toEqual(['k9', 'k8']);
+  });
+  it('홈 @미정 칸: 미정 줄 수를 세고, 미정이 남아 있으면 맨 앞', () => {
+    const buyers = [{ name: '킹고' }, { name: '하워드' }, { name: '@미정' }];
+    const cards = buyerCards({ today, rows, buyers });
+    expect(cards[0]).toMatchObject({ tbd: true, count: 3 });
+    expect(cards[0].buyer.name).toBe('@미정');
+    expect(cards.find((c) => c.buyer.name === '킹고').count).toBe(2);
+    // 바이어 탭에 @미정이 없어도 산지 미정 줄이 있으면 @미정 칸이 생긴다
+    const noTab = buyerCards({ today, rows: rows.filter((r) => r.buyer !== '@미정'), buyers: [{ name: '킹고' }, { name: '하워드' }] });
+    expect(noTab[0]).toMatchObject({ tbd: true, count: 2 });
+    // 미정이 없으면 @미정 칸은 보통 순서(일정 없음 → 뒤)
+    const none = buyerCards({ today, rows: [rows[2]], buyers });
+    expect(none[none.length - 1]).toMatchObject({ tbd: true, count: 0 });
   });
 });
 

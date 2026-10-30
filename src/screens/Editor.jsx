@@ -6,6 +6,7 @@ import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
 import { containersOf, derivedSpecEn, lastCost, lastPrice, originsOf, seasonLabel, seasonStartIso, specEnOf, suggestNo } from '../lib/schedule.js';
 import { planNo } from '../lib/noPlan.js';
+import { TBD_BUYER, TBD_ORIGIN, isTbdBuyer, isTbdOrigin } from '../lib/undecided.js';
 import { back, buyerPath, replace, setLeaveGuard } from '../router.js';
 import { Chip, DateField, Field, MoneyField, Segmented, SelectField, TextField } from '../components/Controls.jsx';
 import { IconAlert, IconClose, IconTrash } from '../components/icons.jsx';
@@ -147,7 +148,8 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   const noVal = noPlan.value;
   const costHint = form.fruit && form.specKo ? lastCost(data.rows, { fruit: form.fruit, specKo: form.specKo.trim() }, src && src.id) : {};
   // 산지 칸 자동완성: 전에 쓴 산지 이름(많이 쓴 순)
-  const origins = originsOf(data.rows);
+  const origins = originsOf(data.rows).filter((o) => !isTbdOrigin(o));
+  const originTbd = isTbdOrigin(form.origin);
   const etaBeforeLoad = form.eta && form.loadDate && form.eta < form.loadDate;
   // 지난 날짜 경고: 새 줄·복제는 언제나, 고치기는 ETA를 바꿨을 때만(원래 지난 줄은 조용히)
   const etaPast = form.eta && form.eta < data.today && (mode !== 'edit' || form.eta !== init.eta);
@@ -306,16 +308,19 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
   // No. 안내: 쓴 번호가 무엇을 하는지(noPlan)
   const noHint = noPlan.hint;
+  // 바이어 미정(@미정)은 맨 앞에 "바이어 미정"으로(2026-10-30 사용자 요청). 바이어 탭에 없어도 고를 수 있다.
   const buyerOptions = [
     ...(form.buyer ? [] : [{ value: '', label: '바이어 고르기', disabled: true }]),
-    ...data.buyers.filter((b) => !b.archived || b.name === form.buyer).map((b) => ({
+    { value: TBD_BUYER, label: '바이어 미정 (나중에 정하기)' },
+    ...data.buyers.filter((b) => (!b.archived || b.name === form.buyer) && !isTbdBuyer(b.name)).map((b) => ({
       value: b.name, label: b.country ? `${b.name} · ${b.country}` : b.name
     }))
   ];
   if (form.buyer && !buyerOptions.some((o) => o.value === form.buyer)) {
     buyerOptions.unshift({ value: form.buyer, label: `${form.buyer} (바이어 탭에 없음)` });
   }
-  const saveLabel = saving ? '저장 중…' : form.buyer && form.buyer.length <= 8 ? `${form.buyer} 스케줄에 저장` : '저장';
+  const saveLabel = saving ? '저장 중…' : isTbdBuyer(form.buyer) ? '바이어 미정으로 저장'
+    : form.buyer && form.buyer.length <= 8 ? `${form.buyer} 스케줄에 저장` : '저장';
 
   return (
     <div className="screen editor with-bottom">
@@ -334,7 +339,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
             <span>이 줄이 다른 사람에게 지워졌거나 목록에서 빠졌어요. 넣은 값은 그대로 있지만 저장은 안 될 수 있어요.</span>
           </div>
         )}
-        {form.buyer && !buyerObj && (
+        {form.buyer && !buyerObj && !isTbdBuyer(form.buyer) && (
           <div className="warn-box" role="status">
             <IconAlert size={18} />
             <span>"{form.buyer}"는 바이어 탭에 없어요. 시트에서 이름이 바뀌었으면 바이어를 다시 골라 주세요.</span>
@@ -343,7 +348,8 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
         <div className="row-2 buyer-no">
           <Field label="바이어">
-            <SelectField value={form.buyer} onChange={(v) => update({ buyer: v })} options={buyerOptions} label="바이어" />
+            <SelectField value={form.buyer} onChange={(v) => update({ buyer: v })} options={buyerOptions} label="바이어"
+              className={isTbdBuyer(form.buyer) ? 'tbd' : ''} />
           </Field>
           <Field label="No.">
             <TextField value={noPlan.shown} onChange={(v) => update({ no: v }, ['no'])} label="No. (인보이스 번호)"
@@ -372,13 +378,18 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
         </Field>
 
         <Field label="산지">
-          <TextField value={form.origin} onChange={(v) => update({ origin: v })} placeholder="예: 나주" label="산지"
-            list="origin-list" />
+          <TextField value={originTbd ? '' : form.origin} onChange={(v) => update({ origin: v })}
+            placeholder={originTbd ? '산지 미정' : '예: 나주'} label="산지" list="origin-list" disabled={originTbd}
+            className={'input' + (originTbd ? ' tbd' : '')} />
           {/* 전에 쓴 산지 이름을 자동완성으로 */}
           <datalist id="origin-list">
             {origins.map((o) => <option key={o} value={o} />)}
           </datalist>
         </Field>
+        {/* 산지 미정 버튼(2026-10-30 사용자 요청). 누르면 산지 칸에 '미정'이 들어가고 목록에 빨간 꼬리표로 보인다 */}
+        <div className="origin-tbd">
+          <Chip on={originTbd} onClick={() => update({ origin: originTbd ? '' : TBD_ORIGIN })}>산지 미정</Chip>
+        </div>
 
         <div className="row-2">
           <Field label="스펙" hint="직접 입력">

@@ -7,6 +7,8 @@ import { useLongPress } from '../hooks/useLongPress.js';
 import { loadedPast, shortNo } from '../lib/schedule.js';
 import { IconLock } from './icons.jsx';
 import { fruitToneClass } from '../lib/fruitTone.js';
+import { isTbdBuyer, isTbdOrigin, isTbdRow } from '../lib/undecided.js';
+import TbdChip from './TbdChip.jsx';
 
 /** 여러 가격('17.3/17.8/18.2')은 좁은 칸에서 '/' 뒤에서 줄이 바뀌게 */
 function breakAtSlash(s) {
@@ -25,23 +27,26 @@ export function TableHead() {
   );
 }
 
-export default function ScheduleRow({ row, currency, today, onTap, onLong }) {
+/** showBuyer: @미정 화면처럼 여러 바이어 줄이 섞일 때 줄마다 바이어 이름표(바이어 미정은 빨간 꼬리표) */
+export default function ScheduleRow({ row, currency, today, showBuyer, onTap, onLong }) {
   const press = useLongPress(onLong, onTap);
   const loaded = loadedPast(row, today);
+  const tbd = isTbdRow(row);
   const price = fmtPrice(row.price, currency);
   const cost = fmtWon(row.cost);
   const work = fmtWon(row.workCost);
   return (
-    <div className={'srow' + (loaded ? ' loaded' : '')} role="button" tabIndex={0}
+    <div className={'srow' + (loaded ? ' loaded' : '') + (tbd ? ' tbd' : '')} role="button" tabIndex={0}
       aria-label={`No. ${row.no || ''} ${row.fruit} ${row.specKo} 상차 ${fmtKo(row.loadDate) || '없음'}${loaded ? '(상차 끝남)' : ''} ETA ${fmtKo(row.eta) || '미정'}`} {...press}>
       <div className={'srow-no num' + (shortNo(row.no).length > 3 ? ' long' : '')} title={String(row.no ?? '')}>
         {shortNo(row.no)}
       </div>
       <div className="srow-top">
+        {showBuyer && (isTbdBuyer(row.buyer) ? <TbdChip>바이어 미정</TbdChip> : <span className="buyer-chip">{row.buyer}</span>)}
         <span className={'fruit' + fruitToneClass(row.fruit)}>{row.fruit || '과일 없음'}</span>
         {row.ship && <span className="ship-chip">{row.ship}</span>}
         <span className="spec">{row.specKo}</span>
-        {row.origin && <span className="origin-chip">{row.origin}</span>}
+        {isTbdOrigin(row.origin) ? <TbdChip>산지 미정</TbdChip> : row.origin && <span className="origin-chip">{row.origin}</span>}
       </div>
       <div className="srow-eta srow-dates">
         <span className="dlabel">상차</span>

@@ -18,6 +18,8 @@
   --head-bg: #F7F8F7;
   --loaded-bg: #FFDDB0; /* 상차가 끝난 줄(2026-10-20 사용자 요청: 노랑 말고 주황) */
   --loaded-press: #FBC98A;
+  --urgent: #D4142A; /* 바이어 미정·산지 미정(2026-10-30 사용자 요청: 긴급, 눈에 띄게) */
+  --tbd-tile: #FFE47A; /* 홈 @미정 칸 노랑 */
   /* 과일 글자색(2026-10-20 사용자 요청). 흰 바탕과 상차 끝난 주황 바탕 모두에서 읽히게 진하게 */
   --fruit-pear: #18201D;
   --fruit-grape: #6B2FA8;
@@ -380,6 +382,36 @@ h1, h2, p { margin: 0; }
 /* ETA 미정 버튼: ETA 칸 아래 오른쪽 */
 .eta-tbd { display: flex; justify-content: flex-end; margin-top: -4px; }
 .eta-tbd .chip.on { border-color: var(--tbc); background: var(--tbc-bg); color: var(--tbc); }
+/* ── 바이어 미정·산지 미정(2026-10-30 사용자 요청: 빨간 바탕 흰 글자보다 더 눈에 띄게, 긴급) ── */
+.tbd-chip {
+  display: inline-flex; align-items: center; gap: 3px; max-width: 100%; padding: 0 8px 0 6px; border-radius: 6px;
+  background: var(--urgent); color: #fff; font-size: 12.5px; line-height: 22px; font-weight: 800; white-space: nowrap;
+  animation: tbd-pulse 1.6s ease-in-out infinite;
+}
+.tbd-chip svg { flex-shrink: 0; }
+@keyframes tbd-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 20, 42, 0.55); }
+  50% { box-shadow: 0 0 0 5px rgba(212, 20, 42, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .tbd-chip { animation: none; } }
+/* 미정 줄은 왼쪽에 빨간 띠 */
+.srow.tbd, .lrow.tbd { box-shadow: inset 5px 0 0 var(--urgent); }
+/* @미정 화면처럼 여러 바이어가 섞인 목록의 바이어 이름표 */
+.buyer-chip {
+  max-width: 100%; padding: 0 6px; border-radius: 6px; background: var(--brand-soft); color: var(--brand);
+  font-size: 12.5px; line-height: 22px; font-weight: 700; overflow-wrap: anywhere;
+}
+/* 입력 화면: 바이어 미정을 고르면 고르기 칸이 빨강, 산지 미정 버튼이 켜지면 빨강 */
+.input.select-input.tbd { background: var(--urgent); border-color: var(--urgent); color: #fff; }
+.input.select-input.tbd select { color: #fff; font-weight: 800; }
+.input.tbd { background: #FDECEC; border-color: var(--urgent); }
+.input.tbd::placeholder { color: var(--urgent); font-weight: 700; }
+.origin-tbd { display: flex; justify-content: flex-end; margin-top: -4px; }
+.origin-tbd .chip.on { border-color: var(--urgent); background: var(--urgent); color: #fff; font-weight: 800; }
+/* 홈 @미정 칸은 노랑(2026-10-30 사용자 요청) */
+.tile.tile-tbd { background: var(--tbd-tile); box-shadow: 0 1px 2px rgba(24, 32, 29, 0.08), inset 0 0 0 2px #F2C200; }
+.tile.tile-tbd .tile-count, .tile.tile-tbd .tile-label { color: #A8101F; } /* 노랑 위에서 읽히게 더 진한 빨강 */
+.tile.tile-tbd .tile-country { color: var(--text-3); font-weight: 600; }
 
 /* 바이어 스케줄 아래 버튼 두 개(JPG로 보내기 · 추가) */
 .bottom-bar.two-even { grid-template-columns: repeat(2, minmax(0, 1fr)); }

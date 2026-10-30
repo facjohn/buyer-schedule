@@ -1,5 +1,6 @@
 // 스케줄 줄을 고르고 묶고 세는 함수들. 화면은 이 함수들만 쓴다.
 import { addMonths, fmtKoYear, fmtMonthKo } from './dates.js';
+import { TBD_BUYER, isTbdBuyer, isTbdOrigin } from './undecided.js';
 
 /** 번호 해. 시트에서 No.만 적고 번호 해를 비운 줄은 서버처럼 ETA의 해로 본다 */
 export function noYearOf(r) {
@@ -160,6 +161,7 @@ function isUpcoming(r, today) {
  * 예정 수는 앞으로의 스케줄 줄 수(ETA가 오늘 이후이거나 미정, 같은 No.의 줄도 하나씩 셈. 2026-10-20 사용자 요청 "스케쥴 갯수만큼").
  * 바이어 스케줄 목록(앞으로)의 줄 수와 같다.
  * 바이어 탭에 없는데 스케줄에만 있는 이름도 카드로 보인다(시트에서 이름을 바꾼 경우 놓치지 않게).
+ * @미정 칸(2026-10-30 사용자 요청)에는 바이어 미정 줄과 산지 미정 줄(다른 바이어 줄이어도)이 모두 모이고, 줄이 있으면 맨 앞에 온다(긴급).
  */
 export function buyerCards(data) {
   const today = data.today;
@@ -171,6 +173,11 @@ export function buyerCards(data) {
     if (!isUpcoming(r, today)) continue;
     if (!byName.has(r.buyer)) byName.set(r.buyer, { buyer: { name: r.buyer }, rows: [] });
     byName.get(r.buyer).rows.push(r);
+    // 산지 미정 줄은 원래 바이어 칸에도, @미정 칸에도(사용자 선택 "둘 다 보이기")
+    if (isTbdOrigin(r.origin) && !isTbdBuyer(r.buyer)) {
+      if (!byName.has(TBD_BUYER)) byName.set(TBD_BUYER, { buyer: { name: TBD_BUYER }, rows: [] });
+      byName.get(TBD_BUYER).rows.push(r);
+    }
   }
   const cards = [...byName.values()].map(({ buyer, rows }, order) => {
     const byNo = sortByNo(rows);
@@ -190,11 +197,12 @@ export function buyerCards(data) {
         ship: first.ship
       } : null,
       allLoaded: rows.length > 0 && !first, // 앞으로의 선적이 있는데 모두 상차가 끝남
-      count: rows.length // 예정 수 = 앞으로의 스케줄 줄 수
+      count: rows.length, // 예정 수 = 앞으로의 스케줄 줄 수
+      tbd: isTbdBuyer(buyer.name)
     };
   });
-  // 다음 상차가 가까운 순 → 상차일 미정 → 상차 다 끝남 → 일정 없는 바이어
-  const rank = (c) => (c.next ? (c.next.loadDate ? 0 : 1) : c.allLoaded ? 2 : 3);
+  // 미정이 남은 @미정 칸 → 다음 상차가 가까운 순 → 상차일 미정 → 상차 다 끝남 → 일정 없는 바이어
+  const rank = (c) => (c.tbd && c.count ? -1 : c.next ? (c.next.loadDate ? 0 : 1) : c.allLoaded ? 2 : 3);
   return cards.sort((a, b) => {
     if (rank(a) !== rank(b)) return rank(a) - rank(b);
     if (rank(a) === 0 && a.next.loadDate !== b.next.loadDate) return cmp(a.next.loadDate, b.next.loadDate);
