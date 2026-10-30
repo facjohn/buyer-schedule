@@ -407,18 +407,19 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
         </Field>
 
         <Field label="산지">
-          <TextField value={originTbd ? '' : form.origin} onChange={(v) => update({ origin: v })}
-            placeholder={originTbd ? '산지 미정' : '예: 나주'} label="산지" list="origin-list" disabled={originTbd}
-            className={'input' + (originTbd ? ' tbd' : '')} />
+          {/* 산지 칸 바로 옆에 산지 미정 버튼(2026-10-30 사용자 요청 "산지칸 옆에 산지미정칸").
+              누르면 산지 칸에 '미정'이 들어가고 목록에 빨간 꼬리표로 보인다 */}
+          <div className="origin-row">
+            <TextField value={originTbd ? '' : form.origin} onChange={(v) => update({ origin: v })}
+              placeholder={originTbd ? '산지 미정' : '예: 나주'} label="산지" list="origin-list" disabled={originTbd}
+              className={'input' + (originTbd ? ' tbd' : '')} />
+            <Chip on={originTbd} onClick={() => update({ origin: originTbd ? '' : TBD_ORIGIN })}>산지 미정</Chip>
+          </div>
           {/* 전에 쓴 산지 이름을 자동완성으로 */}
           <datalist id="origin-list">
             {origins.map((o) => <option key={o} value={o} />)}
           </datalist>
         </Field>
-        {/* 산지 미정 버튼(2026-10-30 사용자 요청). 누르면 산지 칸에 '미정'이 들어가고 목록에 빨간 꼬리표로 보인다 */}
-        <div className="origin-tbd">
-          <Chip on={originTbd} onClick={() => update({ origin: originTbd ? '' : TBD_ORIGIN })}>산지 미정</Chip>
-        </div>
 
         <div className="row-2">
           <Field label="스펙" hint="직접 입력">
