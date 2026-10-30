@@ -38,7 +38,7 @@ export default function App() {
     return () => window.removeEventListener(CODE_EVENT, onCode);
   }, []);
 
-  const { data, fetchedAt, error, loading, refresh } = useScheduleData(code, onAuthFail);
+  const { data, fetchedAt, error, loading, refresh, patchSaved } = useScheduleData(code, onAuthFail);
 
   const showToast = useCallback((text) => {
     setToast(text);
@@ -51,16 +51,19 @@ export default function App() {
     try {
       const res = await call(code, 'save', { items });
       lastSaved.current = { buyer, eta, fruit, at: Date.now() };
-      await refresh({ fresh: true });
+      const fresh = await refresh({ fresh: true });
+      // 다시 읽기가 실패하면 고친 줄의 번호만이라도 바로 반영하고, 목록이 아직 옛것이라고 알린다
+      if (!fresh) patchSaved(res.saved);
       const s = res.saved && res.saved[0];
-      showToast(s && s.no ? `저장했어요 · ${buyer} No. ${s.no}` : '저장했어요');
+      const msg = s && s.no ? `저장했어요 · ${buyer} No. ${s.no}` : '저장했어요';
+      showToast(fresh ? msg : msg + ' · 목록은 잠시 뒤 새로 읽어요');
       return true;
     } catch (e) {
       if (e instanceof AuthError) onAuthFail(e.message);
       else refresh({ fresh: true }); // 지워진 줄·컨테이너 때문에 거절됐을 수 있으니 목록을 새로 받아 둔다
       return e.message;
     }
-  }, [code, refresh, showToast, onAuthFail]);
+  }, [code, refresh, showToast, onAuthFail, patchSaved]);
 
   const remove = useCallback(async (id) => {
     try {
@@ -90,6 +93,8 @@ export default function App() {
   }, [code, refresh, showToast, onAuthFail]);
 
   const saveLost = useCallback((message) => showToast('저장하지 못했어요 · ' + message), [showToast]);
+  // 방금 저장한 줄 표시는 한 번만 쓴다(15초 안에 다시 들어와도 고른 필터를 또 바꾸지 않게, 2026-10-30 점검)
+  const useFocus = useCallback(() => { lastSaved.current = null; }, []);
 
   // 홈 화면 앱에서 오른쪽으로 밀면 뒤로(홈에서는 갈 곳이 없어 끔)
   useSwipeBack(isIosStandalone() && !!code && route.segs.length > 0, () => userBack('/'));
@@ -131,7 +136,8 @@ export default function App() {
     const recent = ls && ls.buyer === second && Date.now() - ls.at < FOCUS_MS;
     screen = (
       <BuyerSchedule key={second} data={data} buyerName={second} onRemove={remove}
-        focusEta={recent ? ls.eta : null} focusFruit={recent ? ls.fruit : null} />
+        focusEta={recent ? ls.eta : null} focusFruit={recent ? ls.fruit : null}
+        onFocusUsed={useFocus} />
     );
   } else if (first === 'buyer' && (second === 'new' || (second === 'edit' && route.segs[2]))) {
     const name = second === 'edit' ? route.segs[2] : '';

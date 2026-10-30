@@ -101,5 +101,18 @@ export function useScheduleData(code, onAuthFail) {
   const day = todayKst();
   const view = useMemo(() => (data && (!data.today || data.today < day) ? { ...data, today: day } : data), [data, day]);
 
-  return { data: view, fetchedAt, error, loading, refresh };
+  // 저장은 됐는데 다시 읽기가 실패했을 때: 저장 결과(id → No.)만 지금 목록에 바로 반영한다(2026-10-30 점검)
+  const patchSaved = useCallback((saved) => {
+    const byId = new Map((saved || []).filter((s) => s && s.id).map((s) => [s.id, s]));
+    if (!byId.size) return;
+    setData((d) => (d && d.rows ? {
+      ...d,
+      rows: d.rows.map((r) => {
+        const s = byId.get(r.id);
+        return s && s.no !== undefined ? { ...r, no: s.no, noYear: s.noYear || r.noYear } : r;
+      })
+    } : d));
+  }, []);
+
+  return { data: view, fetchedAt, error, loading, refresh, patchSaved };
 }

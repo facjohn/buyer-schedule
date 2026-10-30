@@ -261,6 +261,16 @@ function monthsAgoIso_(n) {
   return y + '-' + (m < 10 ? '0' : '') + m + t.slice(7);
 }
 
+// 시즌은 7월 1일에 시작한다(7월~다음 해 6월). 숫자 No.는 시즌마다 1번부터(2026-10-30 사용자 결정 "매년 7월 1일부터 리셋")
+var SEASON_START_MONTH = 7;
+
+/** 날짜가 속한 시즌의 시작 해(2027-03-05 → 2026). 날짜가 없으면 오늘의 시즌. 번호 해(noYear)는 이 값이다. */
+function seasonYear_(v) {
+  var iso = toIsoDate_(v) || todayIso_();
+  var y = Number(iso.slice(0, 4));
+  return Number(iso.slice(5, 7)) >= SEASON_START_MONTH ? y : y - 1;
+}
+
 /** 날짜 값의 해. 날짜가 없으면 올해. */
 function yearOf_(v) {
   var iso = toIsoDate_(v);

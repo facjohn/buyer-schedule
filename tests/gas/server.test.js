@@ -4,6 +4,9 @@ import { makeWorld, d, randomCode } from './harness.js';
 const CODE_1 = randomCode();
 const CODE_2 = randomCode();
 const Y = new Date().getFullYear();
+// 번호 해 = 시즌(7월 1일~다음 해 6월 30일)의 시작 해(2026-10-30 사용자 결정 "매년 7월 1일부터 리셋")
+const sy = (date) => (date.getMonth() + 1 >= 7 ? date.getFullYear() : date.getFullYear() - 1);
+const S = sy(new Date());
 
 function iso(date) {
   const p = (n) => String(n).padStart(2, '0');
@@ -31,11 +34,11 @@ function world(extra = {}) {
     ],
     specs: [{ fruitKo: '신고배', specKo: '5kg 7과', specEn: '5kg, Size 7' }],
     schedule: [
-      { id: 'a1', buyer: '바이어 A', no: 1, noYear: Y, fruit: '신고배', ship: '40ft', specKo: '5kg 7과',
+      { id: 'a1', buyer: '바이어 A', no: 1, noYear: S, fruit: '신고배', ship: '40ft', specKo: '5kg 7과',
         eta: daysFromNow(10), price: 13.8, cost: 15500, workCost: 1800, status: '확정', origin: '나주', qty: '40ft 1대', memo: '비밀 메모' },
-      { id: 'a2', buyer: '바이어 A', no: 2, noYear: Y, fruit: '단감', ship: '40ft', specKo: '10kg',
+      { id: 'a2', buyer: '바이어 A', no: 2, noYear: S, fruit: '단감', ship: '40ft', specKo: '10kg',
         eta: daysFromNow(20), price: 15.2, cost: 17000, status: '미정' },
-      { id: 'a5', buyer: '바이어 A', no: 5, noYear: Y, fruit: '단감', ship: '20ft', specKo: '10kg',
+      { id: 'a5', buyer: '바이어 A', no: 5, noYear: S, fruit: '단감', ship: '20ft', specKo: '10kg',
         eta: daysFromNow(30), price: 15, cost: 16000, status: '미정', deleted: true },
       { id: 'old', buyer: '바이어 A', no: 1, noYear: Y - 2, fruit: '신고배', ship: '40ft', specKo: '5kg 7과',
         eta: d(`${Y - 2}-11-01`), price: 12.5, cost: 14000, workCost: 1600, status: '확정' }
@@ -110,10 +113,20 @@ describe('list', () => {
     expect(res.rows.map((r) => r.id).sort()).toEqual(['a1', 'a2']);
   });
 
-  it('No. 최댓값은 지운 줄까지 센다', () => {
+  it('다음 번호는 지운 줄을 세지 않고, 가운데 빈 번호부터 채운다 (2026-10-30 사용자 결정)', () => {
     const res = world().call({ action: 'list', code: CODE_1 });
-    expect(res.noMax[`바이어 A|${Y}`]).toBe(5);
+    expect(res.noMax[`바이어 A|${S}`]).toBe(2); // 지운 5는 세지 않는다
+    expect(res.noFree[`바이어 A|${S}`]).toBe(3);
     expect(res.noMax[`바이어 A|${Y - 2}`]).toBe(1);
+    // 1·3이 남고 2를 지웠으면 다음은 2(가운데부터 채움), 그다음은 4
+    const w = world();
+    w.call({ action: 'save', code: CODE_1, items: [{ id: 'a2', no: '3', changes: {} }] });
+    const add = () => w.call({ action: 'save', code: CODE_1, items: [{ changes: { buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', eta: iso(daysFromNow(15)) } }] }).saved[0].no;
+    expect(w.call({ action: 'list', code: CODE_1 }).noFree[`바이어 A|${sy(daysFromNow(15))}`]).toBe(sy(daysFromNow(15)) === S ? 2 : 1);
+    if (sy(daysFromNow(15)) === S) {
+      expect(add()).toBe(2);
+      expect(add()).toBe(4);
+    }
   });
 
   it('스펙 영어와 회사는 비어 있으면 사전과 바이어 탭에서 채운다', () => {
@@ -185,7 +198,7 @@ describe('list', () => {
     const w = world();
     w.sheet('schedule').data.push(
       // a1을 그대로 복사한 줄: id 겹침, No. 있음 → id만 새로
-      w.ctx.COLUMNS.schedule.map((c) => ({ id: 'a1', buyer: '바이어 A', no: 1, noYear: Y, fruit: '신고배', specKo: '5kg 7과', eta: daysFromNow(10) })[c[0]] ?? ''),
+      w.ctx.COLUMNS.schedule.map((c) => ({ id: 'a1', buyer: '바이어 A', no: 1, noYear: S, fruit: '신고배', specKo: '5kg 7과', eta: daysFromNow(10) })[c[0]] ?? ''),
       // id와 No.를 비우고 붙인 줄 → 둘 다 새로
       w.ctx.COLUMNS.schedule.map((c) => ({ buyer: '바이어 B', fruit: '단감', specKo: '10kg', eta: daysFromNow(40) })[c[0]] ?? '')
     );
@@ -197,38 +210,40 @@ describe('list', () => {
     expect(copied).toHaveLength(2);
     const pasted = res.rows.find((r) => r.buyer === '바이어 B');
     expect(pasted.no).toBe(1);
-    expect(pasted.noYear).toBe(daysFromNow(40).getFullYear());
+    expect(pasted.noYear).toBe(sy(daysFromNow(40)));
   });
 });
 
 describe('save', () => {
-  it('새 줄은 지운 번호까지 센 최댓값 + 1을 받는다 (규칙 5)', () => {
+  it('새 줄은 지운 번호를 다시 쓴다(지운 줄은 세지 않음, 2026-10-30 사용자 결정)', () => {
     const w = world();
     const res = w.call({ action: 'save', code: CODE_1, items: [{ key: 'k1', changes: {
       buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', specEn: '5kg, Size 7', eta: iso(daysFromNow(50)), price: 14, cost: 16000, workCost: 1800
     } }] });
     expect(res.ok).toBe(true);
-    const yr = daysFromNow(50).getFullYear();
-    expect(res.saved[0]).toMatchObject({ key: 'k1', no: yr === Y ? 6 : 1, noYear: yr });
+    const yr = sy(daysFromNow(50));
+    expect(res.saved[0]).toMatchObject({ key: 'k1', no: yr === S ? 3 : 1, noYear: yr });
     const row = w.read('schedule').find((r) => r.id === res.saved[0].id);
     expect(row.updatedBy).toBe('김산지');
     expect(row.deleted).toBe(false);
   });
 
-  it('ETA가 다음 해인 새 줄은 그 해 1번부터', () => {
-    const res = world().call({ action: 'save', code: CODE_1, items: [{ changes: {
-      buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', eta: `${Y + 1}-01-05`
-    } }] });
-    expect(res.saved[0]).toMatchObject({ no: 1, noYear: Y + 1 });
+  it('번호는 시즌마다: 다음 해 1~6월 ETA는 이번 시즌 번호를 이어 가고, 7월 1일 ETA부터 1번 (2026-10-30 사용자 결정)', () => {
+    const w = world();
+    const item = (eta) => ({ changes: { buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', eta } });
+    const jun = w.call({ action: 'save', code: CODE_1, items: [item(`${S + 1}-06-30`)] });
+    expect(jun.saved[0]).toMatchObject({ no: 3, noYear: S }); // 지운 5는 세지 않는다(1·2 다음)
+    const jul = w.call({ action: 'save', code: CODE_1, items: [item(`${S + 1}-07-01`)] });
+    expect(jul.saved[0]).toMatchObject({ no: 1, noYear: S + 1 });
   });
 
   it('ETA가 해를 넘어가도 No.와 noYear는 그대로', () => {
     const w = world();
-    const res = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { eta: `${Y + 1}-01-08` } }] });
-    expect(res.saved[0]).toMatchObject({ id: 'a1', no: 1, noYear: Y });
+    const res = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { eta: `${S + 1}-07-08` } }] });
+    expect(res.saved[0]).toMatchObject({ id: 'a1', no: 1, noYear: S });
     const row = w.read('schedule').find((r) => r.id === 'a1');
     expect(row.no).toBe(1);
-    expect(row.noYear).toBe(Y);
+    expect(row.noYear).toBe(S);
   });
 
   it('바이어를 바꾼 줄만 새 No.를 받는다', () => {
@@ -240,14 +255,14 @@ describe('save', () => {
 
   it('같은 컨테이너에 더하면 같은 No.', () => {
     const w = world();
-    const res = w.call({ action: 'save', code: CODE_1, items: [{ join: { no: 1, noYear: Y }, changes: {
+    const res = w.call({ action: 'save', code: CODE_1, items: [{ join: { no: 1, noYear: S }, changes: {
       buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '15kg 18-24', specEn: '15kg, 18-24', eta: iso(daysFromNow(10)), cost: 28000, workCost: 12000
     } }] });
-    expect(res.saved[0]).toMatchObject({ no: 1, noYear: Y });
+    expect(res.saved[0]).toMatchObject({ no: 1, noYear: S });
   });
 
   it('없는 컨테이너(지운 No. 포함)에는 더할 수 없다', () => {
-    const res = world().call({ action: 'save', code: CODE_1, items: [{ join: { no: 5, noYear: Y }, changes: { buyer: '바이어 A' } }] });
+    const res = world().call({ action: 'save', code: CODE_1, items: [{ join: { no: 5, noYear: S }, changes: { buyer: '바이어 A' } }] });
     expect(res.ok).toBe(false);
   });
 
@@ -450,17 +465,17 @@ describe('시트에서 복사해 붙인 줄의 No. (규칙 5)', () => {
     expect(row.no).toBe(null);
   });
 
-  it('시간이 지나면 그때의 ETA 해로 No.를 붙인다', () => {
+  it('시간이 지나면 그때의 ETA 시즌으로 No.를 붙인다', () => {
     const w = world();
-    pasted(w, { buyer: '바이어 B', fruit: '단감', specKo: '10kg', eta: d(`${Y + 1}-01-12`), updatedBy: '시트', updatedAt: new Date(Date.now() - 6 * 60 * 1000) });
+    pasted(w, { buyer: '바이어 B', fruit: '단감', specKo: '10kg', eta: d(`${S + 1}-07-12`), updatedBy: '시트', updatedAt: new Date(Date.now() - 6 * 60 * 1000) });
     const row = w.call({ action: 'list', code: CODE_1 }).rows.find((r) => r.buyer === '바이어 B');
-    expect(row).toMatchObject({ no: 1, noYear: Y + 1 });
+    expect(row).toMatchObject({ no: 1, noYear: S + 1 });
   });
 
   it('No.만 적고 번호 해를 비운 줄도 그 컨테이너로 본다(ETA의 해)', () => {
     const w = world();
     pasted(w, { id: 'p1', buyer: '바이어 A', no: 1, fruit: '단감', specKo: '10kg', eta: daysFromNow(10), updatedBy: '시트', updatedAt: new Date() });
-    const yr = daysFromNow(10).getFullYear();
+    const yr = sy(daysFromNow(10));
     const res = w.call({ action: 'save', code: CODE_1, items: [{ join: { no: 1, noYear: yr }, changes: {
       buyer: '바이어 A', fruit: '단감', ship: '40ft', specKo: '10kg', eta: iso(daysFromNow(10))
     } }] });
@@ -485,8 +500,8 @@ describe('시트에서 복사해 붙인 줄의 No. (규칙 5)', () => {
     const changes = { buyer: '바이어 A', fruit: '신고배', ship: '40ft', specKo: '5kg 7과', eta: iso(daysFromNow(10)) };
     const first = w.call({ action: 'save', code: CODE_1, items: [{ key: 'retry-key-0001', changes }] });
     expect(first.saved[0].no).not.toBe(1);
-    const again = w.call({ action: 'save', code: CODE_1, items: [{ key: 'retry-key-0001', join: { no: 1, noYear: Y }, changes: { ...changes, memo: '' } }] });
-    expect(again.saved[0]).toMatchObject({ id: first.saved[0].id, no: 1, noYear: Y });
+    const again = w.call({ action: 'save', code: CODE_1, items: [{ key: 'retry-key-0001', join: { no: 1, noYear: S }, changes: { ...changes, memo: '' } }] });
+    expect(again.saved[0]).toMatchObject({ id: first.saved[0].id, no: 1, noYear: S });
   });
 
   it('메뉴의 id·No. 정리는 기다리지 않고 바로 붙인다', () => {
@@ -591,6 +606,48 @@ describe('인보이스 번호 (규칙 5: KINGO-26-01 = 바이어-시즌-차수)'
     const w = world();
     expect(save(w, { no: 'A|B', changes: base() }).ok).toBe(false);
     expect(save(w, { no: 'X'.repeat(41), changes: base() }).ok).toBe(false);
+  });
+
+  it("'9-1', '#9' 같은 번호를 한 번 써도 그 바이어의 다음 번호는 숫자 그대로 (2026-10-30 점검)", () => {
+    const w = world();
+    const odd = save(w, { no: '9-1', changes: base() }).saved[0];
+    expect(odd.no).toBe('9-1');
+    save(w, { no: '#9', changes: base() });
+    expect(w.call({ action: 'list', code: CODE_1 }).noNext['바이어 A']).toBeUndefined();
+    expect(save(w, { changes: base() }).saved[0].no).toBe(3); // 숫자 1·2 다음(지운 5는 세지 않음)
+  });
+
+  it('잘못 쓰고 지운 인보이스 번호는 번호 줄기를 바꾸지 않는다', () => {
+    const w = world();
+    const typo = save(w, { no: 'hw-26-02', changes: base() }).saved[0];
+    w.call({ action: 'remove', code: CODE_1, ids: [typo.id] });
+    expect(w.call({ action: 'list', code: CODE_1 }).noNext['바이어 A']).toBeUndefined();
+    expect(save(w, { changes: base() }).saved[0].no).toBe(3);
+    // 인보이스 줄기 안에서도 지운 차수는 다시 쓴다(차례대로)
+    save(w, { no: 'KINGO-26-01', changes: base() });
+    const k2 = save(w, { changes: base() }).saved[0];
+    expect(k2.no).toBe('KINGO-26-02');
+    w.call({ action: 'remove', code: CODE_1, ids: [k2.id] });
+    expect(save(w, { changes: base() }).saved[0].no).toBe('KINGO-26-02');
+  });
+
+  it("'KINGO-26-05-1'처럼 덩어리가 더 붙은 번호는 번호 줄기를 가로채지 않고, 0번은 받지 않는다 (2026-10-30 검토)", () => {
+    const w = world();
+    save(w, { no: 'KINGO-26-05', changes: base() });
+    save(w, { no: 'KINGO-26-05-1', changes: base() });
+    expect(w.call({ action: 'list', code: CODE_1 }).noNext['바이어 A']).toBe('KINGO-26-06');
+    expect(save(w, { no: '00', changes: base() }).ok).toBe(false);
+    expect(save(w, { no: 'kingo-26-05', changes: base() }).saved[0].no).toBe('KINGO-26-05');
+    const long = save(w, { no: '12345678901234567890', changes: base() }).saved[0];
+    expect(String(long.no)).toBe('12345678901234567890');
+  });
+
+  it("앞에 0을 붙인 '08'은 8과 같은 번호(같은 선적에 붙는다) (2026-10-30 점검)", () => {
+    const w = world();
+    const r = save(w, { no: '02', changes: base() }).saved[0];
+    expect(r).toMatchObject({ no: 2, noYear: S });
+    const ed = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', no: '０２', changes: {} }] });
+    expect(ed.saved[0]).toMatchObject({ no: 2, noYear: S });
   });
 
   it('숫자 번호만 쓰던 바이어는 지금처럼 해마다 최댓값 + 1', () => {

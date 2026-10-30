@@ -210,7 +210,10 @@ describe('바이어 미정·산지 미정 (2026-10-30 사용자 요청)', () => 
   it('홈 @미정 칸: 미정 줄 수를 세고, 미정이 남아 있으면 맨 앞', () => {
     const buyers = [{ name: '킹고' }, { name: '하워드' }, { name: '@미정' }];
     const cards = buyerCards({ today, rows, buyers });
-    expect(cards[0]).toMatchObject({ tbd: true, count: 3 });
+    expect(cards[0]).toMatchObject({ tbd: true, count: 3, tbdBuyer: 1, tbdOrigin: 2 });
+    // 원래 바이어 칸에도 산지 미정 건수 알림
+    expect(cards.find((c) => c.buyer.name === '킹고')).toMatchObject({ tbdOrigin: 1, tbdBuyer: 0 });
+    expect(cards.find((c) => c.buyer.name === '하워드')).toMatchObject({ tbdOrigin: 1 });
     expect(cards[0].buyer.name).toBe('@미정');
     expect(cards.find((c) => c.buyer.name === '킹고').count).toBe(2);
     // 바이어 탭에 @미정이 없어도 산지 미정 줄이 있으면 @미정 칸이 생긴다

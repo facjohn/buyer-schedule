@@ -71,8 +71,15 @@ function BuyerTiles({ data }) {
                   <span>예정</span>
                 </span>
               </div>
-              {c.tbd ? <div className="tile-country">바이어·산지 미정</div>
+              {c.tbd ? (!c.tbdBuyer && !c.tbdOrigin && <div className="tile-country">바이어·산지 미정</div>)
                 : c.buyer.country && <div className="tile-country">{c.buyer.country}</div>}
+              {/* 미정 알림: 빨간 꼬리표(깜빡이는 테두리)로 칸 안에 "산지 미정 1건"(2026-10-30 사용자 요청) */}
+              {(c.tbdBuyer > 0 || c.tbdOrigin > 0) && (
+                <div className="tile-alerts">
+                  {c.tbdBuyer > 0 && <TbdChip>바이어 미정 {c.tbdBuyer}건</TbdChip>}
+                  {c.tbdOrigin > 0 && <TbdChip>산지 미정 {c.tbdOrigin}건</TbdChip>}
+                </div>
+              )}
               <div className="tile-next">
                 {c.next ? (
                   <>

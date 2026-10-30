@@ -412,6 +412,10 @@ h1, h2, p { margin: 0; }
 .tile.tile-tbd { background: var(--tbd-tile); box-shadow: 0 1px 2px rgba(24, 32, 29, 0.08), inset 0 0 0 2px #F2C200; }
 .tile.tile-tbd .tile-count, .tile.tile-tbd .tile-label { color: #A8101F; } /* 노랑 위에서 읽히게 더 진한 빨강 */
 .tile.tile-tbd .tile-country { color: var(--text-3); font-weight: 600; }
+/* 바둑판 칸 안 미정 알림(2026-10-30 사용자 요청: 알람처럼 눈에 띄게) */
+.tile-alerts { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 4px; min-width: 0; }
+.tiles > .tile { align-self: stretch; }
+.tile-alerts .tbd-chip { font-size: 12px; line-height: 22px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 
 /* 바이어 스케줄 아래 버튼 두 개(JPG로 보내기 · 추가) */
 .bottom-bar.two-even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -423,3 +427,47 @@ h1, h2, p { margin: 0; }
 .jpg-lock { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--brand); }
 .note.center { text-align: center; margin-top: -4px; }
 .warn-item { display: block; font-weight: 400; }
+
+/* ── 여러 폰 크기(2026-10-30 사용자 요청: 갤럭시 폴드·폴더블 아이폰·일반 갤럭시·일반 아이폰 모두 잘 보이게) ──
+   - 아주 좁은 화면(폴드 바깥 화면 등 360px 미만): 여백·글자를 조금 줄여 가로 스크롤 없이
+   - 펼친 폴더블·태블릿(600px 이상): 화면을 760px까지 넓히고 바둑판은 3~4칸, 가격 칸도 넓게 */
+@media (max-width: 359px) {
+  .home-head { padding: 16px 12px 10px; }
+  .home-head .title { font-size: 22px; }
+  .view-switch { margin: 0 12px; }
+  .view-switch .seg-btn { font-size: 14px; }
+  .section-title { margin: 6px 12px 0; }
+  .tiles { gap: 10px; padding: 0 12px 20px; }
+  .tile { padding: 12px; border-radius: 16px; }
+  .tile-name { font-size: 16px; line-height: 21px; }
+  .tile-date { font-size: 14px; }
+  .srow { grid-template-columns: 34px minmax(0, 1fr) 64px 74px; column-gap: 6px; padding-left: 12px; padding-right: 12px; }
+  .srow-dates { grid-template-columns: 34px minmax(0, 1fr); column-gap: 6px; }
+  .filters { padding: 10px 12px 8px; }
+  .lrow, .lday, .month, .period-note { padding-left: 12px; padding-right: 12px; }
+  .form { padding: 8px 12px 24px; }
+  .row-2.buyer-no { grid-template-columns: minmax(0, 1fr) 128px; }
+  .bottom-bar { padding: 10px 12px calc(14px + var(--safe-bottom)); }
+}
+@media (min-width: 600px) {
+  .screen, .bottom-bar, .sheet { max-width: 760px; }
+  .form-error.floating { max-width: 728px; }
+  .toast { max-width: min(560px, calc(100vw - 32px)); }
+  .tiles { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .srow { grid-template-columns: 48px minmax(0, 1fr) 120px 130px; column-gap: 12px; }
+  .srow-dates { grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; }
+  .row-2.buyer-no { grid-template-columns: minmax(0, 1fr) 220px; }
+  .jpg-frame { width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; }
+}
+/* 완전히 펼친 폴더블(840px 이상: 갤럭시 Z 폴드8·아이폰 폴더블 7.6인치 안쪽 화면, 태블릿). 2026-10-30 사용자 참고 자료의
+   3단계 기준(600 미만 / 600~839 / 840 이상)을 따른다. 고정 픽셀이 아니라 폭에 따라 넓힌다. */
+@media (min-width: 840px) {
+  .screen, .bottom-bar, .sheet { max-width: 1080px; }
+  .form-error.floating { max-width: 728px; }
+  .tiles { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  .srow { grid-template-columns: 56px minmax(0, 1fr) 150px 160px; column-gap: 16px; padding-left: 24px; padding-right: 24px; }
+  .srow-dates { grid-template-columns: 56px minmax(0, 1fr); column-gap: 16px; }
+  .month, .filters, .lday, .lrow, .period-note { padding-left: 24px; padding-right: 24px; }
+  /* 입력 화면은 칸이 너무 길어지지 않게 가운데 760px */
+  .form { max-width: 760px; margin-left: auto; margin-right: auto; }
+}

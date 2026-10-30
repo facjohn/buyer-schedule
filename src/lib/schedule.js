@@ -2,9 +2,16 @@
 import { addMonths, fmtKoYear, fmtMonthKo } from './dates.js';
 import { TBD_BUYER, isTbdBuyer, isTbdOrigin } from './undecided.js';
 
-/** 번호 해. 시트에서 No.만 적고 번호 해를 비운 줄은 서버처럼 ETA의 해로 본다 */
+/** 날짜('yyyy-MM-dd')가 속한 시즌(7월 1일~다음 해 6월 30일)의 시작 해. 2027-03-05 → 2026 (서버 seasonYear_와 같다) */
+export function seasonYear(iso) {
+  if (!iso) return null;
+  const y = Number(iso.slice(0, 4));
+  return Number(iso.slice(5, 7)) >= 7 ? y : y - 1;
+}
+
+/** 번호 해(시즌 시작 해). 시트에서 No.만 적고 번호 해를 비운 줄은 서버처럼 ETA의 시즌으로 본다 */
 export function noYearOf(r) {
-  return r.noYear || (r.eta ? Number(r.eta.slice(0, 4)) : null);
+  return r.noYear || (r.eta ? seasonYear(r.eta) : null);
 }
 
 export function shipmentKey(r) {
@@ -198,7 +205,10 @@ export function buyerCards(data) {
       } : null,
       allLoaded: rows.length > 0 && !first, // 앞으로의 선적이 있는데 모두 상차가 끝남
       count: rows.length, // 예정 수 = 앞으로의 스케줄 줄 수
-      tbd: isTbdBuyer(buyer.name)
+      tbd: isTbdBuyer(buyer.name),
+      // 칸 안 알림(2026-10-30 사용자 요청 "바둑판 안에 산지미정 1건 알람처럼"): 앞으로의 줄 중 미정 수
+      tbdOrigin: rows.filter((r) => isTbdOrigin(r.origin)).length,
+      tbdBuyer: rows.filter((r) => isTbdBuyer(r.buyer)).length
     };
   });
   // 미정이 남은 @미정 칸 → 다음 상차가 가까운 순 → 상차일 미정 → 상차 다 끝남 → 일정 없는 바이어
@@ -257,7 +267,10 @@ export function expectedNo(noMax, buyer, year) {
 export function suggestNo(data, buyer, year) {
   if (!buyer) return '';
   const next = data.noNext && data.noNext[buyer];
-  return next || String(expectedNo(data.noMax, buyer, year));
+  if (next) return next;
+  // 창구가 알려 준 다음 숫자 번호(지운 줄은 세지 않고 가운데 빈 번호부터, 2026-10-30 사용자 결정)
+  const free = data.noFree && data.noFree[`${buyer}|${year}`];
+  return String(free || expectedNo(data.noMax, buyer, year));
 }
 
 /** 목록의 좁은 No. 칸용: 'KINGO-26-01' → '26-01' (맨 앞 바이어 글자는 바이어 화면이라 뺀다) */
@@ -267,7 +280,11 @@ export function shortNo(no) {
   return parts.length > 1 && /^[^\d]+$/.test(parts[0]) ? parts.slice(1).join('-') : s;
 }
 
-/** 같은 컨테이너에 더할 때 고르는 그 바이어의 선적들. 앞으로의 것이 먼저 */
+/**
+ * 그 바이어의 선적들(번호 판단용 전체 목록). 앞으로의 것(ETA 미정 포함)이 먼저이고 upcoming 표시가 붙는다.
+ * 입력 화면의 번호 고르기 목록에는 앞으로의 것만 보인다(2026-10-30 점검: 목록에 안 보이는 지난 선적 번호가 떠서 헷갈림,
+ * ETA 미정 선적이 지난 쪽으로 들어가 10개 뒤에서 잘리던 문제).
+ */
 export function containersOf(rows, buyer, today) {
   const map = new Map();
   for (const r of rows) {
@@ -283,9 +300,12 @@ export function containersOf(rows, buyer, today) {
     value: `${c.noYear}|${c.no}`,
     label: `No. ${c.no}${c.eta ? ' · ' + fmtKoYear(c.eta, today) : ''} · ${[...c.fruits].join('·')}`
   }));
-  const up = list.filter((c) => c.eta && c.eta >= today).sort((a, b) => cmp(a.eta, b.eta));
-  const past = list.filter((c) => !c.eta || c.eta < today).sort((a, b) => cmp(b.eta || '', a.eta || ''));
-  return [...up, ...past.slice(0, 10)];
+  const up = list.filter((c) => !c.eta || c.eta >= today)
+    .sort((a, b) => cmp(a.eta || '9999', b.eta || '9999'))
+    .map((c) => ({ ...c, upcoming: true }));
+  const past = list.filter((c) => c.eta && c.eta < today).sort((a, b) => cmp(b.eta, a.eta))
+    .map((c) => ({ ...c, upcoming: false }));
+  return [...up, ...past];
 }
 
 function latestBy(rows, test, field) {

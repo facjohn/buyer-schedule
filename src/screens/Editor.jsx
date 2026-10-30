@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
-import { containersOf, derivedSpecEn, lastCost, lastPrice, originsOf, seasonLabel, seasonStartIso, specEnOf, suggestNo } from '../lib/schedule.js';
+import { containersOf, noYearOf, seasonYear, derivedSpecEn, lastCost, lastPrice, originsOf, seasonLabel, seasonStartIso, specEnOf, suggestNo } from '../lib/schedule.js';
 import { planNo } from '../lib/noPlan.js';
 import { TBD_BUYER, TBD_ORIGIN, isTbdBuyer, isTbdOrigin } from '../lib/undecided.js';
 import { back, buyerPath, replace, setLeaveGuard } from '../router.js';
@@ -76,7 +76,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
   // 화면을 연 순간의 값. 고치기는 이 값과 달라진 칸만 보낸다(그사이 다른 사람이 고친 칸을 덮지 않게).
   const [init] = useState(() => {
-    const year = Number(data.today.slice(0, 4));
+    const year = seasonYear(data.today); // 번호 해 = 시즌(7월~6월)의 시작 해
     if (!src) {
       return { ...EMPTY, buyer: presetBuyer || '', exporter: defaultExporter(data, presetBuyer),
         no: suggestNo(data, presetBuyer, year) };
@@ -141,11 +141,15 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   // 사전에 없어도 한글이 없는 스펙('4kg/450g')이나 사전 스펙을 '/'로 이은 스펙은 영어가 저절로 정해진다
   const specKnown = specInDict || !!(form.fruit && derivedSpecEn(data.specs, form.fruit, form.specKo));
   const containers = form.buyer ? containersOf(data.rows, form.buyer, data.today) : [];
-  const etaYear = Number((form.eta || data.today).slice(0, 4));
+  const etaYear = seasonYear(form.eta || data.today); // 번호 해 = ETA(없으면 오늘)의 시즌
   const sugg = suggestNo(data, form.buyer, etaYear);
   // No. 판단(무엇을 보여 주고, 무엇을 보내고, 무슨 안내를 할지)은 lib/noPlan.js 한곳에서
-  const noPlan = planNo({ mode, asNext, touched: touched.no, typed: form.no, src, buyer: form.buyer, containers, sugg, etaYear, rows: data.rows });
+  const noPlan = planNo({ mode, asNext, touched: touched.no, typed: form.no, src, buyer: form.buyer, containers, sugg, etaYear,
+    todayYear: seasonYear(data.today), rows: data.rows });
   const noVal = noPlan.value;
+  // 번호 고르기 목록: 앞으로의 선적만(ETA 미정 포함), 고치기에서는 이 줄의 선적은 빼고
+  const pickable = containers.filter((c) => c.upcoming &&
+    !(mode === 'edit' && src && form.buyer === src.buyer && String(c.no) === String(src.no) && c.noYear === noYearOf(src)));
   const costHint = form.fruit && form.specKo ? lastCost(data.rows, { fruit: form.fruit, specKo: form.specKo.trim() }, src && src.id) : {};
   // 산지 칸 자동완성: 전에 쓴 산지 이름(많이 쓴 순)
   const origins = originsOf(data.rows).filter((o) => !isTbdOrigin(o));
@@ -250,6 +254,10 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       return;
     }
     if (etaBeforeLoad && !window.confirm('ETA가 상차일보다 빨라요. 그래도 저장할까요?')) return;
+    if (noVal === '0') {
+      setError('No.는 1부터 써 주세요.');
+      return;
+    }
     if (noVal.includes('|') || noVal.length > 40) {
       setError('No.가 너무 길거나 쓸 수 없는 글자(|)가 있어요.');
       return;
@@ -311,7 +319,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   // 바이어 미정(@미정)은 맨 앞에 "바이어 미정"으로(2026-10-30 사용자 요청). 바이어 탭에 없어도 고를 수 있다.
   const buyerOptions = [
     ...(form.buyer ? [] : [{ value: '', label: '바이어 고르기', disabled: true }]),
-    { value: TBD_BUYER, label: '바이어 미정 (나중에 정하기)' },
+    { value: TBD_BUYER, label: '바이어 미정' },
     ...data.buyers.filter((b) => (!b.archived || b.name === form.buyer) && !isTbdBuyer(b.name)).map((b) => ({
       value: b.name, label: b.country ? `${b.name} · ${b.country}` : b.name
     }))
@@ -353,11 +361,11 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
           </Field>
           <Field label="No.">
             <TextField value={noPlan.shown} onChange={(v) => update({ no: v }, ['no'])} label="No. (인보이스 번호)"
-              placeholder={sugg || '예: KINGO-26-01'} list="no-list" autoCapitalize="characters"
+              placeholder={noPlan.placeholder} list="no-list" autoCapitalize="characters"
               className="input num" />
             {/* 그 바이어의 기존 번호(같은 컨테이너에 더할 때) */}
             <datalist id="no-list">
-              {containers.map((c) => <option key={c.value} value={String(c.no)} label={c.label} />)}
+              {pickable.map((c) => <option key={c.value} value={String(c.no)} label={c.label} />)}
             </datalist>
           </Field>
         </div>

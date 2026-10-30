@@ -1,7 +1,7 @@
 // ② 바이어 스케줄: 한 건 두 줄, No. 순(월 제목은 달이 바뀔 때만). 누르면 고치기, 길게 누르면 복제·삭제.
 // 위에 '지난 일정' 버튼(기본은 앞으로의 일정 전부)과 과일 버튼(2026-10-19 사용자 요청: 다음 2개월·앞으로 전부 없앰).
 // 지난 일정은 이번 시즌(7월 1일부터) 것만(2026-10-20 사용자 요청). 그 전 시즌은 시트에서 본다.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { filterPeriod, fruitsInOrder, groupInNoOrder, seasonLabel, seasonStartIso, sortByNo, sortRecentFirst } from '../lib/schedule.js';
 import { fmtKo } from '../lib/dates.js';
 import { isTbdBuyer, rowsForBuyer } from '../lib/undecided.js';
@@ -23,7 +23,7 @@ function periodFor(eta, today) {
   return eta && eta < today && eta >= seasonStartIso(today) ? 'past' : 'future';
 }
 
-export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, onRemove }) {
+export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, onFocusUsed, onRemove }) {
   // 기간·과일 필터는 줄을 열었다 돌아와도 그대로. 방금 저장한 줄이 안 보이게 걸려 있으면 그 줄이 보이게 바꾼다.
   const [periodRaw, setPeriod] = useRemembered('buyer.period.' + buyerName, 'future', (prev) => {
     const p = prev === 'past' ? 'past' : 'future';
@@ -33,6 +33,10 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
   const [fruit, setFruit] = useRemembered('buyer.fruit.' + buyerName, '',
     (prev) => (focusFruit && prev && prev !== focusFruit ? '' : prev));
   const [menuRow, setMenuRow] = useState(null);
+  // 방금 저장한 줄 표시는 이 화면을 처음 열 때 한 번만 쓴다
+  useEffect(() => {
+    if (onFocusUsed && ((focusEta !== null && focusEta !== undefined) || focusFruit)) onFocusUsed();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const buyer = data.buyers.find((b) => b.name === buyerName) || { name: buyerName, currency: 'USD' };

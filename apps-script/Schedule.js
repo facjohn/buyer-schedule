@@ -4,9 +4,10 @@
  * No. 규칙 (CLAUDE.md 절대 규칙 5)
  * - No.는 인보이스 번호(예: KINGO-26-01 = 바이어-시즌-차수). 선적(컨테이너나 항공 건) 하나에 하나이고,
  *   같은 컨테이너의 사이즈·과일은 같은 No.의 줄 여러 개.
- * - 사람이 직접 쓸 수 있다. 비워 두면 그 바이어의 마지막 번호 다음 차수(KINGO-26-02, 자릿수 유지).
- *   '마지막'은 앞글자가 가장 뒤(시즌이 큰)인 번호 중 가장 큰 차수. 지운 줄도 센다.
- * - 숫자만 쓰는 옛 번호(1, 2, 3)는 바이어·번호 해(noYear)마다 최댓값 + 1.
+ * - 사람이 직접 쓸 수 있다. 비워 두면 그 바이어의 다음 차수(KINGO-26-02, 자릿수 유지). 앞글자는 가장 뒤(시즌이 큰) 것.
+ *   지운 줄은 세지 않고 가운데 빈 번호부터 채운다(2026-10-30 사용자 결정: 인보이스는 차례대로, 지운 번호는 다시 쓴다).
+ * - 숫자만 쓰는 번호(1, 2, 3)는 바이어·번호 해(noYear)마다 최댓값 + 1. 번호 해는 시즌(7월 1일~다음 해 6월 30일)의 시작 해
+ *   (2026-10-30 사용자 결정 "매년 7월 1일부터 리셋": 1월에 1번으로 돌아가지 않고 7월에 돌아간다).
  * - 바이어를 바꾼 줄은 그 바이어의 다음 번호(직접 쓰면 그 번호).
  */
 
@@ -48,7 +49,8 @@ function list_(member) {
     buyers: buyers,
     fruits: fruits,
     specs: specs,
-    noMax: numbering_(t.rows).legacy, // 숫자만 쓰는 옛 번호: '바이어|해' → 최댓값
+    noMax: legacyOut_(numbering_(t.rows), maxOf_), // 숫자 번호: '바이어|해' → 지금 쓰는 가장 큰 번호(옛 앱용)
+    noFree: legacyOut_(numbering_(t.rows), nextFree_), // 숫자 번호: '바이어|해' → 다음 번호(가운데 빈 번호부터)
     noNext: peekNext_(numbering_(t.rows)), // 인보이스 번호: 바이어 → 다음 번호(예: KINGO-26-02)
     sheetUrl: SpreadsheetApp.getActive().getUrl()
   };
@@ -180,10 +182,18 @@ function noCell_(s) {
   return /^[1-9]\d{0,8}$/.test(s) ? Number(s) : s;
 }
 
-/** 'KINGO-26-01' → { prefix: 'KINGO-26-', num: 1, width: 2 }. 끝이 숫자가 아니면 null */
-function parseNo_(s) {
-  var m = /^(.*?)(\d+)$/.exec(s);
-  return m ? { prefix: m[1], num: Number(m[2]), width: m[2].length } : null;
+/**
+ * 인보이스 번호 'KINGO-26-01' → { prefix: 'KINGO-26-', key: 'KINGO-26-', num: 1, width: 2 }.
+ * 글자가 든 앞글자 + '-' + 두 자리(시즌) + '-' + 차수일 때만 인보이스 번호로 본다(2026-10-30 점검:
+ * '9-1', '#9', 'A12', '9.5'처럼 한 번 쓴 번호가 그 바이어의 다음 번호를 '9-2'로 바꾸던 문제). 아니면 null.
+ * key는 대소문자를 무시한 비교용.
+ */
+var INVOICE_RE = /^([^-]+-\d{2}-)(\d+)$/;
+function parseInvoice_(s) {
+  var m = INVOICE_RE.exec(s);
+  // 앞글자(바이어 글자)에 글자가 있어야 한다. 'KINGO-26-05-1'처럼 덩어리가 더 붙은 번호는 인보이스 줄기로 보지 않는다
+  if (!m || !/[A-Za-z\uAC00-\uD7A3]/.test(m[1])) return null;
+  return { prefix: m[1], key: m[1].toUpperCase(), num: Number(m[2]), width: m[2].length };
 }
 
 /** 앞글자 비교. 안의 숫자는 숫자로 비교한다(KINGO-27- > KINGO-26-) */
@@ -201,32 +211,72 @@ function cmpPrefix_(a, b) {
 }
 
 /**
- * 바이어별 다음 번호를 셀 준비(지운 줄도 센다).
- * series: 앞글자가 있는 번호의 바이어별 '가장 뒤 앞글자 + 가장 큰 차수', legacy: 숫자 번호의 '바이어|해' 최댓값
+ * 바이어별 다음 번호를 셀 준비. 지운 줄은 세지 않는다(2026-10-30 사용자 결정: "지운 번호를 다시 써야해.
+ * 중간에 띄어넘고 이런거 없어서. 차례대로 인보이스라서 채우면서 가야해").
+ * series: 인보이스 번호를 쓰는 바이어의 { 가장 뒤 앞글자, 쓰는 차수들, 자릿수 }, legacy: 숫자 번호의 '바이어|해' → 쓰는 번호들.
+ * (쓰는 번호들은 { 번호: true } 객체)
+ * - 인보이스 번호도 숫자도 아닌 번호('9-1', '#9')는 셈에 넣지 않는다.
  */
 function numbering_(rows) {
   var series = {};
   var legacy = {};
-  rows.forEach(function (r) {
+  var live = rows.filter(function (r) { return !toBool_(r.deleted); });
+  live.forEach(function (r) {
+    var buyer = str_(r.buyer);
+    var p = parseInvoice_(noStr_(r.no));
+    if (!buyer || !p) return;
+    var cur = series[buyer];
+    if (!cur || cmpPrefix_(p.key, cur.key) > 0) series[buyer] = { prefix: p.prefix, key: p.key, nums: {}, width: p.width };
+  });
+  live.forEach(function (r) {
     var buyer = str_(r.buyer);
     var no = noStr_(r.no);
     if (!buyer || !no) return;
-    var p = parseNo_(no);
-    if (p && p.prefix) {
+    var p = parseInvoice_(no);
+    if (p) {
       var cur = series[buyer];
-      var c = cur ? cmpPrefix_(p.prefix, cur.prefix) : 1;
-      if (c > 0) {
-        series[buyer] = { prefix: p.prefix, num: p.num, width: p.width };
-      } else if (c === 0) {
-        if (p.num > cur.num) cur.num = p.num;
+      if (cur && cur.key === p.key) {
+        cur.nums[p.num] = true;
         if (p.width > cur.width) cur.width = p.width;
       }
     } else if (/^\d+$/.test(no)) {
-      var k = buyer + '|' + (toNum_(r.noYear) || yearOf_(r.eta));
-      if (!legacy[k] || Number(no) > legacy[k]) legacy[k] = Number(no);
+      var k = buyer + '|' + (toNum_(r.noYear) || seasonYear_(r.eta));
+      (legacy[k] = legacy[k] || {})[Number(no)] = true;
     }
   });
   return { series: series, legacy: legacy };
+}
+
+/**
+ * 다음에 쓸 번호: 쓰는 번호 중 가장 작은 번호~가장 큰 번호 사이에 빈 번호가 있으면 그 번호(가운데부터 채움),
+ * 없으면 가장 큰 번호 + 1, 아무것도 없으면 1. 가장 작은 번호보다 앞(시트 밖에서 쓴 번호일 수 있음)은 채우지 않는다.
+ */
+function nextFree_(used) {
+  var nums = Object.keys(used || {}).map(Number).filter(function (n) { return n >= 1; });
+  if (!nums.length) return 1;
+  var min = Math.min.apply(null, nums);
+  var max = Math.max.apply(null, nums);
+  for (var n = min; n < max; n++) if (!used[n]) return n;
+  return max + 1;
+}
+
+function maxOf_(used) {
+  var nums = Object.keys(used || {}).map(Number);
+  return nums.length ? Math.max.apply(null, nums) : 0;
+}
+
+/** 이번 저장에서 쓴 번호를 셈에 넣는다(한 번에 여러 줄을 저장할 때 같은 번호를 두 번 주지 않게) */
+function markNo_(state, buyer, no, year) {
+  if (!state || !buyer) return;
+  var s = noStr_(no);
+  var p = parseInvoice_(s);
+  if (p) {
+    var cur = state.series[buyer];
+    if (cur && cur.key === p.key) cur.nums[p.num] = true;
+  } else if (/^\d+$/.test(s)) {
+    var k = buyer + '|' + year;
+    (state.legacy[k] = state.legacy[k] || {})[Number(s)] = true;
+  }
 }
 
 function pad_(n, width) {
@@ -235,25 +285,35 @@ function pad_(n, width) {
   return t;
 }
 
-/** 다음 번호를 정하고 셈을 하나 올린다. 인보이스 번호가 있는 바이어는 다음 차수, 없으면 그 해 숫자 최댓값 + 1 */
+/** 다음 번호를 정하고 셈에 넣는다. 인보이스 번호가 있는 바이어는 그 앞글자의 다음 차수, 없으면 그 시즌 숫자(가운데 빈 번호부터) */
 function nextNo_(state, buyer, year) {
   var s = state.series[buyer];
   if (s) {
-    s.num += 1;
-    return s.prefix + pad_(s.num, s.width);
+    var n = nextFree_(s.nums);
+    s.nums[n] = true;
+    return s.prefix + pad_(n, s.width);
   }
   var k = buyer + '|' + year;
-  state.legacy[k] = (state.legacy[k] || 0) + 1;
-  return state.legacy[k];
+  var used = state.legacy[k] = state.legacy[k] || {};
+  var m = nextFree_(used);
+  used[m] = true;
+  return m;
 }
 
-/** 앱 입력 화면에 미리 채울 다음 인보이스 번호(셈은 올리지 않음) */
+/** 앱 입력 화면에 미리 채울 다음 인보이스 번호(셈에는 넣지 않음) */
 function peekNext_(state) {
   var out = {};
   Object.keys(state.series).forEach(function (b) {
     var s = state.series[b];
-    out[b] = s.prefix + pad_(s.num + 1, s.width);
+    out[b] = s.prefix + pad_(nextFree_(s.nums), s.width);
   });
+  return out;
+}
+
+/** 숫자 번호: '바이어|해' → 다음에 쓸 번호(noFree), 쓰는 가장 큰 번호(noMax, 옛 앱용) */
+function legacyOut_(state, pick) {
+  var out = {};
+  Object.keys(state.legacy).forEach(function (k) { out[k] = pick(state.legacy[k]); });
   return out;
 }
 
@@ -262,7 +322,7 @@ function containerIndex_(rows) {
   var nb = { keys: {}, years: {} };
   rows.forEach(function (r) {
     if (toBool_(r.deleted)) return;
-    addContainer_(nb, str_(r.buyer), noStr_(r.no), toNum_(r.noYear) || yearOf_(r.eta));
+    addContainer_(nb, str_(r.buyer), noStr_(r.no), toNum_(r.noYear) || seasonYear_(r.eta));
   });
   return nb;
 }
@@ -287,10 +347,19 @@ function findContainer_(nb, buyer, no, year) {
   return y ? { no: no, noYear: y } : null;
 }
 
+/** 전각 숫자(０-９)는 보통 숫자로, 숫자만이면 앞의 0을 뗀다('08' → '8', '0'은 그대로). 2026-10-30 점검 */
+function normNo_(s) {
+  var t = String(s || '').replace(/[\uFF10-\uFF19]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  if (/^\d+$/.test(t)) return t.replace(/^0+(?=\d)/, '');
+  // 인보이스 번호는 대문자로(kingo-26-01과 KINGO-26-01이 다른 선적이 되지 않게)
+  return parseInvoice_(t) && /[A-Za-z]/.test(t) ? t.toUpperCase() : t;
+}
+
 /** 사람이 쓴 번호 확인 */
 function cleanNo_(v) {
-  var s = noStr_(v);
+  var s = normNo_(noStr_(v));
   if (!s) return '';
+  if (s === '0') throw new Error('No.는 1부터 써 주세요.');
   if (s.length > 40 || s.indexOf('|') >= 0) throw new Error('No.가 너무 길거나 쓸 수 없는 글자(|)가 있어요: ' + s);
   return s;
 }
@@ -331,11 +400,11 @@ function findRepairs_(rows, makeId, force) {
       return;
     }
     if (buyer && no && !toNum_(r.noYear)) {
-      fix.noYear = yearOf_(r.eta);
+      fix.noYear = seasonYear_(r.eta);
       changed = true;
     }
     if (buyer && !no) {
-      fix.noYear = yearOf_(r.eta);
+      fix.noYear = seasonYear_(r.eta);
       fix.no = nextNo_(state, buyer, fix.noYear);
       changed = true;
     }
@@ -461,8 +530,8 @@ function save_(member, items) {
 /** 새 번호 정하기: 고른 선적(join) → 사람이 쓴 번호(있는 선적이면 그리로) → 다음 번호 */
 function pickNo_(buyer, eta, join, typed, nb) {
   if (join) return checkJoin_(join, buyer, nb);
-  if (typed) return findContainer_(nb, buyer, typed, yearOf_(eta)) || { no: typed, noYear: yearOf_(eta) };
-  var noYear = yearOf_(eta);
+  if (typed) return findContainer_(nb, buyer, typed, seasonYear_(eta)) || { no: typed, noYear: seasonYear_(eta) };
+  var noYear = seasonYear_(eta);
   return { no: noStr_(nextNo_(nb.state, buyer, noYear)), noYear: noYear };
 }
 
@@ -477,7 +546,7 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
   var buyer = writes.buyer !== undefined ? str_(writes.buyer) : curBuyer;
   var eta = writes.eta !== undefined ? writes.eta : cur.eta;
   var curNo = noStr_(cur.no);
-  var curYear = toNum_(cur.noYear) || (curNo ? yearOf_(cur.eta) : null);
+  var curYear = toNum_(cur.noYear) || (curNo ? seasonYear_(cur.eta) : null);
   var no = curNo;
   var noYear = toNum_(cur.noYear);
 
@@ -487,7 +556,7 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
     no = p.no;
     noYear = p.noYear;
   } else if (typed && typed !== curNo) {
-    var there = findContainer_(nb, buyer, typed, curYear || yearOf_(eta));
+    var there = findContainer_(nb, buyer, typed, curYear || seasonYear_(eta));
     if (there) {
       // 이미 있는 번호: 이 줄만 그 선적으로
       no = there.no;
@@ -495,13 +564,16 @@ function updateRow_(cur, changes, join, typed, nb, member, now) {
     } else {
       // 없는 번호: 이 줄만 새 번호로(같은 번호였던 다른 줄은 그대로)
       no = typed;
-      noYear = curYear || yearOf_(eta);
+      noYear = curYear || seasonYear_(eta);
     }
   }
   if (no !== curNo) writes.no = noCell_(no);
   if (no && noYear !== toNum_(cur.noYear)) writes.noYear = noYear;
   // No.가 빈 줄(시트에서 붙여 넣는 중)은 여기서 붙이지 않고 findRepairs_에 맡긴다(ETA를 고치는 중일 수 있어서)
-  if (buyer && no) addContainer_(nb, buyer, no, noYear || yearOf_(eta));
+  if (buyer && no) {
+    addContainer_(nb, buyer, no, noYear || seasonYear_(eta));
+    markNo_(nb.state, buyer, no, noYear || seasonYear_(eta));
+  }
 
   // 스펙이나 과일을 바꾸면서 영어를 안 보냈으면(사전·적은 그대로 영어를 쓰는 스펙) 줄의 옛 영어를 지운다.
   // 그대로 두면 새 스펙에 옛 영어('10kg box')가 붙고 스펙 탭에도 그렇게 더해진다.
@@ -533,6 +605,7 @@ function newRow_(changes, join, typed, nb, member, now) {
 
   var p = pickNo_(buyer, row.eta, join, typed, nb);
   addContainer_(nb, buyer, p.no, p.noYear);
+  markNo_(nb.state, buyer, p.no, p.noYear);
 
   row.id = newId_();
   row.no = noCell_(p.no);
