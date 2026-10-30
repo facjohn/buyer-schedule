@@ -23,7 +23,8 @@ const C = {
  * JPG에 담을 원본 줄(내부 칸 포함)이라 화면 밖으로 내보내지 않는다. 번호 해(noYear)로 줄 세운 다음 허용 칸만 담는다.
  */
 export function upcomingRowsOf(data, buyerName) {
-  return sortByNo((data.rows || []).filter((r) => r.buyer === buyerName && (!r.eta || r.eta >= data.today)));
+  // 저장 중인 줄(번호·값이 아직 확정 안 됨)은 저장이 끝난 뒤에 넣는다(2026-10-30 검토)
+  return sortByNo((data.rows || []).filter((r) => r.buyer === buyerName && !r.pending && (!r.eta || r.eta >= data.today)));
 }
 
 /**

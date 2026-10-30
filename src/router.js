@@ -6,7 +6,13 @@
 //   #/dup/id      복제(같은 컨테이너에 추가)
 //   #/buyer/new   바이어 추가
 //   #/buyer/edit/바이어  바이어 고치기
+//
+// 화면이 바뀔 때 아이폰처럼 새 화면은 오른쪽에서 밀려 들어오고, 뒤로 가면 오른쪽으로 빠진다
+// (2026-10-30 사용자 요청 "화면 바뀔때 애플 특유의 애니메이션"). 브라우저의 View Transitions로 그리고,
+// 안 되는 브라우저·'동작 줄이기'·브라우저가 이미 밀기 움직임을 보여 준 뒤로 가기(사파리 밀어서 뒤로)는 그냥 바꾼다.
+// 뒤로 오면 그 화면을 보던 스크롤 위치로 돌아간다.
 import { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { takeCodeOnNavigate } from './lib/link.js';
 
 const listeners = new Set();
@@ -29,17 +35,77 @@ function notify() {
   for (const fn of listeners) fn(current());
 }
 
+// ── 화면 넘김 움직임 ─────────────────────────────
+let suppressNext = false; // 손으로 밀기에서 이미 움직임을 보여 줬으면 다음 한 번은 그냥 바꾼다
+let navToken = 0; // 연달아 넘길 때 앞 움직임이 뒤 움직임의 방향 표시를 지우지 않게
+
+function reduceMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
+
+/** dir: 'forward'(밀려 들어옴) · 'back'(빠져나감) · 'fade' · 'none' */
+function transition(dir, update) {
+  const skip = suppressNext;
+  suppressNext = false;
+  const html = document.documentElement;
+  if (dir === 'none' || skip || !document.startViewTransition || reduceMotion() || document.visibilityState !== 'visible') {
+    update();
+    return;
+  }
+  html.dataset.nav = dir;
+  const token = ++navToken;
+  try {
+    const vt = document.startViewTransition(() => {
+      flushSync(update);
+    });
+    // 빠르게 연달아 넘기면 앞의 움직임은 건너뛴다(오류로 남지 않게)
+    vt.ready.catch(() => {});
+    vt.updateCallbackDone.catch(() => {});
+    vt.finished.catch(() => {}).finally(() => {
+      if (token === navToken) delete html.dataset.nav;
+    });
+  } catch {
+    delete html.dataset.nav;
+    update();
+  }
+}
+
+/** 손으로 밀어서 이미 화면을 옮겼을 때: 다음 화면 바꾸기는 움직임 없이 */
+export function suppressNextTransition() {
+  suppressNext = true;
+}
+
+// ── 스크롤 위치 기억(뒤로 오면 보던 곳으로) ──────────
+const scrollPos = new Map();
+const posKey = () => `${depth()}|${window.location.hash}`;
+function saveScroll() {
+  scrollPos.set(posKey(), window.scrollY);
+}
+function restoreScroll() {
+  const y = scrollPos.get(posKey()) || 0;
+  window.scrollTo(0, y);
+}
+
+// ── 앞으로 가기 ────────────────────────────────
+let maxDepth = 0; // 이 앱 안에서 쌓은 가장 깊은 화면(뒤로 간 뒤에는 앞으로 갈 수 있다)
+
 // 입력 중인 화면이 '나가기 전에 확인'을 걸어 둘 수 있다(뒤로 가기 몸짓이나 안드로이드 뒤로 버튼).
 let guard = null;
 let skipGuard = false;
 let replaceAfterBack = null; // backTo: 뒤로 간 다음 그 화면을 이 주소로 바꾼다
 let last = { state: window.history.state, hash: window.location.hash };
+let lastDepth = depth();
 
 function remember() {
   last = { state: window.history.state, hash: window.location.hash };
+  lastDepth = depth();
 }
 
-function onPop() {
+function onPop(e) {
   if (takeCodeOnNavigate()) {
     skipGuard = false;
     remember();
@@ -57,8 +123,13 @@ function onPop() {
     replaceAfterBack = null;
     window.history.replaceState({ depth: depth() }, '', '#' + path);
   }
+  const d = depth();
+  const dir = e && e.hasUAVisualTransition ? 'none' : d < lastDepth ? 'back' : d > lastDepth ? 'forward' : 'fade';
   remember();
-  notify();
+  transition(dir, () => {
+    notify();
+    restoreScroll();
+  });
 }
 
 window.addEventListener('popstate', onPop);
@@ -81,17 +152,25 @@ function depth() {
 }
 
 export function navigate(path) {
+  saveScroll();
   window.history.pushState({ depth: depth() + 1 }, '', '#' + path);
+  maxDepth = depth();
   remember();
-  notify();
-  // 새 화면은 맨 위부터 보인다(홈 '상차일로 보기'처럼 긴 목록 아래에서 줄을 눌러도 고치기 화면 머리글이 보이게)
-  try { window.scrollTo(0, 0); } catch { /* 무시 */ }
+  transition('forward', () => {
+    notify();
+    // 새 화면은 맨 위부터 보인다(홈 '상차일로 보기'처럼 긴 목록 아래에서 줄을 눌러도 고치기 화면 머리글이 보이게)
+    try { window.scrollTo(0, 0); } catch { /* 무시 */ }
+  });
 }
 
-export function replace(path) {
+/** 이 화면을 다른 주소로 바꾸기(기록은 하나). dir: 움직임(기본 살짝 겹쳐 바뀜) */
+export function replace(path, dir = 'fade') {
   window.history.replaceState({ depth: depth() }, '', '#' + path);
   remember();
-  notify();
+  transition(dir, () => {
+    notify();
+    try { window.scrollTo(0, 0); } catch { /* 무시 */ }
+  });
 }
 
 /** 앱 안에서 온 화면이면 뒤로, 바로 열린 화면이면 fallback으로. 앱이 스스로 가는 거라 확인은 건너뛴다. */
@@ -100,7 +179,7 @@ export function back(fallback = '/') {
     skipGuard = true;
     window.history.back();
   } else {
-    replace(fallback);
+    replace(fallback, 'back');
   }
 }
 
@@ -111,14 +190,29 @@ export function backTo(path) {
     replaceAfterBack = path;
     window.history.back();
   } else {
-    replace(path);
+    replace(path, 'back');
   }
 }
 
-/** 사람이 뒤로 가기를 할 때(밀어서 뒤로): 입력 중이면 먼저 확인한다 */
-export function userBack(fallback = '/') {
-  if (guard && !guard()) return;
+/** 나가도 되는지(입력 중이면 묻는다). 손으로 밀기에서 화면을 빼기 전에 쓴다 */
+export function confirmLeave() {
+  return !guard || guard();
+}
+
+/** 사람이 뒤로 가기를 할 때(밀어서 뒤로): 입력 중이면 먼저 확인한다. 갔으면 true */
+export function userBack(fallback = '/', { confirmed = false } = {}) {
+  if (!confirmed && guard && !guard()) return false;
   back(fallback);
+  return true;
+}
+
+/** 뒤로 갔다가 다시 앞으로 갈 화면이 있는지 */
+export function canGoForward() {
+  return depth() < maxDepth;
+}
+
+export function goForward() {
+  if (canGoForward()) window.history.forward();
 }
 
 export function buyerPath(name) {

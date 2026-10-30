@@ -39,6 +39,11 @@ export function useScheduleData(code, onAuthFail) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const inflight = useRef(null);
+  // 지금 보이는 목록을 창구가 만든 때(serverTime). 이보다 옛 목록(늦게 도착한 다시 읽기·저장 응답)은 버린다(2026-10-30 검토)
+  const latestServer = useRef(cached.current && cached.current.data ? cached.current.data.serverTime || '' : '');
+  const isOlder = (res) => !!(res && res.serverTime && latestServer.current && res.serverTime < latestServer.current);
+  // 저장 중인 줄(화면에 먼저 보여 주기): { key, kind: 'edit'|'new'|'remove', id, patch, row }
+  const [pending, setPending] = useState([]);
   const authFail = useRef(onAuthFail);
   authFail.current = onAuthFail;
 
@@ -55,6 +60,8 @@ export function useScheduleData(code, onAuthFail) {
     const p = (async () => {
       try {
         const res = await call(code, 'list');
+        if (isOlder(res)) return res; // 이미 더 새 목록(저장 응답)을 보여 주는 중
+        latestServer.current = res.serverTime || latestServer.current;
         const at = new Date().toISOString();
         setData(res);
         setFetchedAt(at);
@@ -99,7 +106,34 @@ export function useScheduleData(code, onAuthFail) {
   // 오늘 날짜는 창구(서울 기준)가 준 값을 쓰되, 이 폰에 남겨 둔 옛 응답이라 하루 이상 지났으면 폰의 서울 날짜로 올린다
   // (오프라인으로 다음 날 열었을 때 상차 끝남 주황·지난 일정이 하루 늦지 않게, 2026-10-20 검토).
   const day = todayKst();
-  const view = useMemo(() => (data && (!data.today || data.today < day) ? { ...data, today: day } : data), [data, day]);
+  const view = useMemo(() => {
+    if (!data) return data;
+    let d = !data.today || data.today < day ? { ...data, today: day } : data;
+    // 저장 중인 줄을 목록에 먼저 보여 준다(고친 칸 덮기, 새 줄 더하기, 지운 줄 빼기). 저장이 끝나면 창구의 목록으로 바뀐다
+    if (pending.length) {
+      let rows = d.rows;
+      for (const op of pending) {
+        if (op.kind === 'edit') rows = rows.map((r) => (r.id === op.id ? { ...r, ...op.patch, pending: true } : r));
+        else if (op.kind === 'remove') rows = rows.filter((r) => r.id !== op.id);
+        else if (op.kind === 'new' && op.row) rows = [...rows, { ...op.row, pending: true }];
+      }
+      d = { ...d, rows };
+    }
+    return d;
+  }, [data, day, pending]);
+
+  /** 저장·지우기 응답에 붙어 온 새 목록을 그대로 쓴다(다시 읽기 요청을 따로 하지 않아도 되게) */
+  const applyList = useCallback((list) => {
+    if (!list || !list.ok || isOlder(list)) return;
+    latestServer.current = list.serverTime || latestServer.current;
+    const at = new Date().toISOString();
+    setData(list);
+    setFetchedAt(at);
+    setError('');
+    writeCache(list, at);
+  }, []);
+  const addPending = useCallback((op) => setPending((p) => [...p, op]), []);
+  const dropPending = useCallback((key) => setPending((p) => p.filter((op) => op.key !== key)), []);
 
   // 저장은 됐는데 다시 읽기가 실패했을 때: 저장 결과(id → No.)만 지금 목록에 바로 반영한다(2026-10-30 점검)
   const patchSaved = useCallback((saved) => {
@@ -114,5 +148,5 @@ export function useScheduleData(code, onAuthFail) {
     } : d));
   }, []);
 
-  return { data: view, fetchedAt, error, loading, refresh, patchSaved };
+  return { data: view, fetchedAt, error, loading, refresh, patchSaved, applyList, addPending, dropPending, pendingCount: pending.length };
 }

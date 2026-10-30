@@ -91,7 +91,8 @@ const globals = {
     getScriptProperties: () => ({
       getProperty: (k) => (props.has(k) ? props.get(k) : null),
       setProperty: (k, v) => props.set(k, v),
-      deleteProperty: (k) => props.delete(k)
+      deleteProperty: (k) => props.delete(k),
+      getKeys: () => [...props.keys()]
     })
   },
   CacheService: {
@@ -122,7 +123,9 @@ export const mockMembers = gas.readTable_('members').rows.map((r) => ({
   name: String(r.name), code: String(r.code)
 }));
 
+// 개발용: window.__mockDelay(ms)로 느린 창구, window.__mockFail = true로 연결 실패를 흉내 낸다(바로 넘어가는 저장 확인용)
 export async function mockPost(body) {
-  await new Promise((r) => setTimeout(r, 250));
+  await new Promise((r) => setTimeout(r, window.__mockDelay || 250));
+  if (window.__mockFail) throw new TypeError('mock network down');
   return JSON.parse(gas.doPost({ postData: { contents: body } }).getContent());
 }

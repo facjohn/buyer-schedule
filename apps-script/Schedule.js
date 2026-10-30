@@ -468,11 +468,13 @@ function save_(member, items) {
     var specAdds = [];
     var saved = [];
 
-    // 응답만 끊겨 같은 새 줄을 다시 보낸 경우: 이미 만든 줄을 고치는 것으로 바꾼다(줄이 두 번 생기지 않게)
+    // 응답만 끊겨 같은 새 줄을 다시 보낸 경우: 이미 만든 줄을 고치는 것으로 바꾼다(줄이 두 번 생기지 않게).
+    // 저장 표시는 7일 기억한다(앱이 '저장하지 못한 줄'을 나중에 다시 보내도 두 번 생기지 않게, 2026-10-30 검토)
     var cache = CacheService.getScriptCache();
+    var props = PropertiesService.getScriptProperties();
     items = items.map(function (item) {
       if (item.id || !isSaveKey_(item.key)) return item;
-      var made = cache.get('sv:' + item.key);
+      var made = madeIdFor_(cache, props, item.key);
       var row = made ? byId[made] : null;
       return row && !toBool_(row.deleted)
         ? { id: made, key: item.key, join: item.join, no: item.no, changes: item.changes }
@@ -501,7 +503,7 @@ function save_(member, items) {
         result = newRow_(changes, item.join, c.no, nb, member, now);
         appends.push(result.row);
         byId[result.id] = result.row;
-        if (isSaveKey_(item.key)) cache.put('sv:' + item.key, result.id, 1800);
+        if (isSaveKey_(item.key)) rememberMade_(cache, props, item.key, result.id);
       }
       saved.push({ key: item.key || null, id: result.id, no: result.no, noYear: result.noYear, changed: result.changed });
 
@@ -523,6 +525,7 @@ function save_(member, items) {
 
     appendRows_(t, appends);
     appendRows_(specT, specAdds);
+    if (appends.length) pruneSaveKeys_(props);
     return { ok: true, saved: saved };
   });
 }
@@ -617,6 +620,32 @@ function newRow_(changes, join, typed, nb, member, now) {
     row: row, id: row.id, no: row.no, noYear: p.noYear, changed: Object.keys(changes).length,
     final: { fruit: str_(row.fruit), specKo: str_(row.specKo), specEn: str_(row.specEn) }
   };
+}
+
+var SAVE_KEY_DAYS = 7;
+
+/** 새 줄의 저장 표시로 이미 만든 줄 id(빠른 캐시 → 7일 보관 스크립트 속성) */
+function madeIdFor_(cache, props, key) {
+  var c = cache.get('sv:' + key);
+  if (c) return c;
+  var p = props.getProperty('sv:' + key);
+  return p ? String(p).split('|')[0] : null;
+}
+
+function rememberMade_(cache, props, key, id) {
+  cache.put('sv:' + key, id, 21600);
+  props.setProperty('sv:' + key, id + '|' + Date.now());
+}
+
+/** 7일 지난 저장 표시는 지운다(스크립트 속성 용량을 넘지 않게) */
+function pruneSaveKeys_(props) {
+  if (!props.getKeys) return;
+  var cutoff = Date.now() - SAVE_KEY_DAYS * 24 * 3600 * 1000;
+  props.getKeys().forEach(function (k) {
+    if (k.indexOf('sv:') !== 0) return;
+    var t = Number(String(props.getProperty(k) || '').split('|')[1]);
+    if (!t || t < cutoff) props.deleteProperty(k);
+  });
 }
 
 /** 앱이 입력 화면마다 만드는 저장 표시(같은 새 줄을 두 번 만들지 않으려고) */

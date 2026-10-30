@@ -29,14 +29,16 @@ export function TableHead() {
 
 /** showBuyer: @미정 화면처럼 여러 바이어 줄이 섞일 때 줄마다 바이어 이름표(바이어 미정은 빨간 꼬리표) */
 export default function ScheduleRow({ row, currency, today, showBuyer, onTap, onLong }) {
-  const press = useLongPress(onLong, onTap);
+  // 저장 중인 줄은 저장이 끝날 때까지 누를 수 없다(아직 시트에 없는 줄을 고치지 않게)
+  const noop = () => {};
+  const press = useLongPress(row.pending ? noop : onLong, row.pending ? noop : onTap);
   const loaded = loadedPast(row, today);
   const tbd = isTbdRow(row);
   const price = fmtPrice(row.price, currency);
   const cost = fmtWon(row.cost);
   const work = fmtWon(row.workCost);
   return (
-    <div className={'srow' + (loaded ? ' loaded' : '') + (tbd ? ' tbd' : '')} role="button" tabIndex={0}
+    <div className={'srow' + (loaded ? ' loaded' : '') + (tbd ? ' tbd' : '') + (row.pending ? ' pending' : '')} role="button" tabIndex={0}
       aria-label={`No. ${row.no || ''} ${row.fruit} ${row.specKo} 상차 ${fmtKo(row.loadDate) || '없음'}${loaded ? '(상차 끝남)' : ''} ETA ${fmtKo(row.eta) || '미정'}`} {...press}>
       <div className={'srow-no num' + (shortNo(row.no).length > 3 ? ' long' : '')} title={String(row.no ?? '')}>
         {shortNo(row.no)}
@@ -44,6 +46,7 @@ export default function ScheduleRow({ row, currency, today, showBuyer, onTap, on
       <div className="srow-top">
         {showBuyer && (isTbdBuyer(row.buyer) ? <TbdChip>바이어 미정</TbdChip> : <span className="buyer-chip">{row.buyer}</span>)}
         <span className={'fruit' + fruitToneClass(row.fruit)}>{row.fruit || '과일 없음'}</span>
+        {row.pending && <span className="pending-tag">저장 중</span>}
         {row.ship && <span className="ship-chip">{row.ship}</span>}
         <span className="spec">{row.specKo}</span>
         {isTbdOrigin(row.origin) ? <TbdChip>산지 미정</TbdChip> : row.origin && <span className="origin-chip">{row.origin}</span>}

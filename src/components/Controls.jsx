@@ -4,8 +4,11 @@ import { fmtKo } from '../lib/dates.js';
 import { IconCalendar, IconDown } from './icons.jsx';
 
 export function Segmented({ options, value, onChange, label }) {
+  // 고른 칸 표시가 미끄러지듯 옮겨 간다(아이폰 분할 버튼, 2026-10-30 사용자 요청)
+  const idx = options.findIndex((o) => (typeof o === 'string' ? o : o.value) === value);
   return (
-    <div className="seg" role="radiogroup" aria-label={label}>
+    <div className={'seg' + (idx >= 0 ? ' has-thumb' : '')} role="radiogroup" aria-label={label}
+      style={{ '--n': options.length, '--idx': Math.max(0, idx) }}>
       {options.map((o) => {
         const v = typeof o === 'string' ? o : o.value;
         const text = typeof o === 'string' ? o : o.label;

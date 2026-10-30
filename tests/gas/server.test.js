@@ -657,6 +657,35 @@ describe('인보이스 번호 (규칙 5: KINGO-26-01 = 바이어-시즌-차수)'
   });
 });
 
+describe('저장 결과에 새 목록 붙이기(withList, 2026-10-30 빠른 저장)', () => {
+  it('같은 저장 표시로 다시 보낸 새 줄은 캐시가 비어도(시간이 지나도) 두 번 생기지 않는다', () => {
+    const w = world();
+    const changes = { buyer: '바이어 A', fruit: '단감', ship: '40ft', specKo: '10kg', eta: iso(daysFromNow(12)) };
+    const first = w.call({ action: 'save', code: CODE_1, items: [{ key: 'durable-key-0001', changes }] });
+    const before = w.read('schedule').length;
+    w.cacheMap.clear(); // 캐시가 비워진 뒤(6시간 지남)
+    const again = w.call({ action: 'save', code: CODE_1, items: [{ key: 'durable-key-0001', changes }] });
+    expect(again.saved[0].id).toBe(first.saved[0].id);
+    expect(w.read('schedule').length).toBe(before);
+  });
+
+  it('withList면 저장·지우기 응답에 새 목록이 붙고, 없으면 붙지 않는다', () => {
+    const w = world();
+    const plain = w.call({ action: 'save', code: CODE_1, items: [{ id: 'a1', changes: { price: 21 } }] });
+    expect(plain.list).toBeUndefined();
+    const res = w.call({ action: 'save', code: CODE_1, withList: true, items: [{ id: 'a1', changes: { price: 22 } }] });
+    expect(res.ok).toBe(true);
+    expect(res.list.ok).toBe(true);
+    expect(res.list.rows.find((r) => r.id === 'a1').price).toBe(22);
+    const rm = w.call({ action: 'remove', code: CODE_1, withList: true, ids: ['a2'] });
+    expect(rm.list.rows.some((r) => r.id === 'a2')).toBe(false);
+    // 실패한 저장에는 목록을 붙이지 않는다
+    const bad = w.call({ action: 'save', code: CODE_1, withList: true, items: [{ id: 'nope', changes: { price: 1 } }] });
+    expect(bad.ok).toBe(false);
+    expect(bad.list).toBeUndefined();
+  });
+});
+
 describe('바이어 더하기·고치기 (2026-10-19)', () => {
   const add = (w, buyer, original) => w.call({ action: 'saveBuyer', code: CODE_1, buyer, original });
 

@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
 import { containersOf, noYearOf, seasonYear, derivedSpecEn, lastCost, lastPrice, originsOf, seasonLabel, seasonStartIso, specEnOf, suggestNo } from '../lib/schedule.js';
-import { planNo } from '../lib/noPlan.js';
-import { TBD_BUYER, TBD_ORIGIN, isTbdBuyer, isTbdOrigin } from '../lib/undecided.js';
+import { isPlainNo, planNo } from '../lib/noPlan.js';
+import { TBD_BUYER, TBD_ORIGIN, buyerLabel, isTbdBuyer, isTbdOrigin } from '../lib/undecided.js';
 import { back, buyerPath, replace, setLeaveGuard } from '../router.js';
 import { Chip, DateField, Field, MoneyField, Segmented, SelectField, TextField } from '../components/Controls.jsx';
 import { IconAlert, IconClose, IconTrash } from '../components/icons.jsx';
@@ -273,8 +273,29 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       }
     }
     // 번호를 안 보낸 새 줄은 창구가 저장할 때 잠금 안에서 다음 번호를 붙인다(동시에 저장해도 겹치지 않게)
+    // 화면은 기다리지 않고 바로 돌아간다. 목록에는 저장 중인 줄을 먼저 보여 준다(2026-10-30 사용자 요청: 저장 로딩이 너무 오래 걸려)
+    const shownNo = item.join ? String(item.join.no) : noVal || String(sugg || '');
+    const asNo = (v) => (v === '' || v === null || v === undefined ? null : isPlainNo(v) ? Number(v) : v);
+    const money = (f) => {
+      const v = norm(f, form[f]);
+      return v === '' || v === null ? null : v;
+    };
+    const optimistic = mode === 'edit'
+      ? { kind: 'edit', id: src.id, patch: optimisticPatch(changes, item) }
+      : {
+        kind: 'new',
+        row: {
+          id: 'tmp-' + saveKey, buyer: form.buyer, no: asNo(shownNo),
+          noYear: item.join ? item.join.noYear : etaYear,
+          fruit: form.fruit, ship: form.ship, specKo: form.specKo.trim(), specEn: norm('specEn', form.specEn),
+          eta: form.etaTbd ? '' : form.eta, loadDate: form.loadDate,
+          price: money('price'), cost: money('cost'), workCost: money('workCost'),
+          origin: form.origin.trim(), exporter: form.exporter || defaultExporter(data, form.buyer), status: '', qty: '', memo: ''
+        }
+      };
+    const label = [buyerLabel(form.buyer), shownNo ? 'No. ' + shownNo : '', form.fruit, form.specKo.trim()].filter(Boolean).join(' ');
     setSaving(true);
-    const ok = await onSave([item], form.buyer, form.eta, form.fruit);
+    const ok = await onSave([item], { buyer: form.buyer, eta: form.eta, fruit: form.fruit, optimistic, label });
     if (!alive.current) {
       // 그사이 뒤로 가기로 화면을 떠났으면 이동하지 않는다. 실패만 알림으로 알린다(성공 알림은 App이 띄움).
       if (ok !== true && onSaveLost) onSaveLost(ok || '저장하지 못했어요.');
@@ -294,12 +315,12 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   async function remove() {
     // 두 번 빠르게 눌러 확인 없이 지워지지 않게, 확인 버튼이 뜬 뒤 잠깐은 누름을 받지 않는다
     if (saving || Date.now() - deleteArmedAt < 600) return;
+    // 목록으로 먼저 돌아가고 지운다(지우는 줄이 화면에서 먼저 빠져 이 화면에 '다른 사람이 지웠어요'가 뜨지 않게). 실패 알림은 App이 띄운다
     setSaving(true);
-    const ok = await onRemove(src.id); // 실패 알림은 App이 띄운다
-    if (!alive.current) return;
-    setSaving(false);
-    setDeleteArmedAt(0);
-    if (ok === true) back(buyerPath(src.buyer));
+    const id = src.id;
+    const label = [buyerLabel(src.buyer), src.no ? 'No. ' + src.no : '', src.fruit, src.specKo, '지우기'].filter(Boolean).join(' ');
+    back(buyerPath(src.buyer));
+    onRemove(id, label);
   }
 
   function close() {
@@ -341,7 +362,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       </header>
 
       <div className={'form' + (error ? ' has-error' : '')}>
-        {rowGone && (
+        {rowGone && !saving && (
           <div className="warn-box" role="status">
             <IconAlert size={18} />
             <span>이 줄이 다른 사람에게 지워졌거나 목록에서 빠졌어요. 넣은 값은 그대로 있지만 저장은 안 될 수 있어요.</span>
@@ -508,4 +529,15 @@ function hasValue(n) {
 function defaultExporter(data, buyerName) {
   const b = data.buyers.find((x) => x.name === buyerName);
   return (b && b.exporter) || '';
+}
+
+/** 고치기에서 화면에 먼저 보여 줄 칸(저장이 끝나면 창구의 값으로 바뀐다) */
+function optimisticPatch(changes, item) {
+  const patch = {};
+  for (const [f, v] of Object.entries(changes)) {
+    patch[f] = MONEY_FIELDS.includes(f) && (v === '' || v === null) ? null : v;
+  }
+  if (item.no) patch.no = isPlainNo(item.no) ? Number(item.no) : item.no;
+  else if ('buyer' in changes) patch.no = null; // 새 바이어의 번호는 저장할 때 창구가 붙인다
+  return patch;
 }

@@ -370,14 +370,6 @@ h1, h2, p { margin: 0; }
   font-size: 13px; line-height: 18px; text-align: center;
 }
 
-/* 밀어서 뒤로: 미는 동안 왼쪽에 따라 나오는 동그라미 */
-.swipe-back {
-  position: fixed; left: 0; top: 50%; z-index: 50; width: 44px; height: 44px; border-radius: 22px;
-  display: flex; align-items: center; justify-content: center; padding-bottom: 3px;
-  background: #fff; color: var(--text-2); font-size: 30px; line-height: 1; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
-  pointer-events: none; transition: background 0.12s, color 0.12s;
-}
-.swipe-back.ready { background: var(--brand); color: #fff; }
 
 /* ETA 미정 버튼: ETA 칸 아래 오른쪽 */
 .eta-tbd { display: flex; justify-content: flex-end; margin-top: -4px; }
@@ -412,6 +404,21 @@ h1, h2, p { margin: 0; }
 .tile.tile-tbd { background: var(--tbd-tile); box-shadow: 0 1px 2px rgba(24, 32, 29, 0.08), inset 0 0 0 2px #F2C200; }
 .tile.tile-tbd .tile-count, .tile.tile-tbd .tile-label { color: #A8101F; } /* 노랑 위에서 읽히게 더 진한 빨강 */
 .tile.tile-tbd .tile-country { color: var(--text-3); font-weight: 600; }
+/* @미정 칸: 왼쪽 이름·다음 상차, 오른쪽을 미정 수가 크게 차지(2026-10-30 사용자 요청: 알림 대신 숫자를 크게).
+   숫자 크기는 칸 폭(cqw)에 맞추고 자릿수(--d)가 늘면 작아진다 */
+.tile.tile-tbd { flex-direction: row; align-items: stretch; gap: 4px; container-type: inline-size; }
+.tbd-left { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.tbd-left .tile-next { margin-top: auto; }
+.tile.tile-tbd .tile-date { font-size: 14px; line-height: 19px; white-space: normal; }
+.tile.tile-tbd .tile-what { white-space: normal; }
+.tbd-count {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #A8101F; font-size: 13px; line-height: 16px; font-weight: 700;
+}
+.tbd-count .num {
+  font-size: 64px; font-size: calc(58cqw / (0.55 + 0.45 * var(--d, 1)));
+  line-height: 0.9; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+}
 /* 바둑판 칸 안 미정 알림(2026-10-30 사용자 요청: 알람처럼 눈에 띄게) */
 .tile-alerts { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 4px; min-width: 0; }
 .tiles > .tile { align-self: stretch; }
@@ -471,3 +478,99 @@ h1, h2, p { margin: 0; }
   /* 입력 화면은 칸이 너무 길어지지 않게 가운데 760px */
   .form { max-width: 760px; margin-left: auto; margin-right: auto; }
 }
+
+/* ── 아이폰 같은 움직임(2026-10-30 사용자 요청: "톡톡 튀고, 손으로 슬라이드, 화면 바뀔때 애플 특유의 애니메이션") ──
+   '동작 줄이기'를 켠 폰에서는 모두 멈춘다. */
+/* 화면 넘김(View Transitions): 새 화면은 오른쪽에서 밀려 들어오고 앞 화면은 30% 왼쪽으로 살짝 어두워지며 물러난다. 뒤로는 반대 */
+::view-transition-old(root), ::view-transition-new(root) {
+  animation-duration: 0.44s; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); mix-blend-mode: normal;
+}
+html[data-nav="forward"]::view-transition-old(root) { animation-name: vt-push-old; }
+html[data-nav="forward"]::view-transition-new(root) { animation-name: vt-push-new; box-shadow: -12px 0 32px rgba(0, 0, 0, 0.14); }
+html[data-nav="back"]::view-transition-old(root) { animation-name: vt-pop-old; z-index: 2; box-shadow: -12px 0 32px rgba(0, 0, 0, 0.14); }
+html[data-nav="back"]::view-transition-new(root) { animation-name: vt-pop-new; }
+html[data-nav="fade"]::view-transition-old(root), html[data-nav="fade"]::view-transition-new(root) { animation-duration: 0.22s; }
+@keyframes vt-push-new { from { transform: translateX(100%); } }
+@keyframes vt-push-old { to { transform: translateX(-30%); filter: brightness(0.94); } }
+@keyframes vt-pop-old { to { transform: translateX(100%); } }
+@keyframes vt-pop-new { from { transform: translateX(-30%); filter: brightness(0.94); } }
+/* 손으로 밀어 뒤로 간 뒤: 앞 화면이 왼쪽에서 들어온다(화면 조각마다, 고정된 아래 띠가 튀지 않게) */
+.screen.swipe-arrive > * { animation: vt-pop-new 0.36s cubic-bezier(0.32, 0.72, 0, 1); }
+html.swiping, html.swiping body { overflow-x: hidden; }
+#root { will-change: auto; }
+
+/* 앞으로 밀기: 오른쪽 끝에서 따라 나오는 동그라미 */
+.swipe-fwd {
+  position: fixed; right: 0; top: 50%; z-index: 50; width: 44px; height: 44px; border-radius: 22px;
+  display: flex; align-items: center; justify-content: center; padding-bottom: 3px;
+  background: #fff; color: var(--text-2); font-size: 30px; line-height: 1; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  pointer-events: none; transition: background 0.12s, color 0.12s;
+}
+.swipe-fwd.ready { background: var(--brand); color: #fff; }
+
+/* 분할 버튼(바이어별 보기 / 상차일로 보기, 운송 등): 고른 칸 표시가 미끄러진다 */
+.seg { position: relative; }
+.seg.has-thumb { overflow: hidden; }
+.seg.has-thumb::before {
+  content: ''; position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / var(--n));
+  border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.06);
+  transform: translateX(calc(var(--idx) * 100%)); transition: transform 0.42s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.seg.has-thumb .seg-btn { position: relative; z-index: 1; transition: color 0.2s; }
+.seg.has-thumb .seg-btn.on { background: transparent; box-shadow: none; }
+
+/* 저장 중인 줄(바로 넘어가는 저장) */
+.srow.pending, .lrow.pending { opacity: 0.62; pointer-events: none; }
+.pending-tag {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border-radius: 6px; background: var(--line);
+  color: var(--text-2); font-size: 11.5px; line-height: 20px; font-weight: 700; white-space: nowrap;
+}
+.pending-tag::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* 위의 알림 띠(연결 끊김·저장하지 못한 줄)는 한 묶음으로 위에 붙는다(겹치지 않게) */
+.top-banners { position: sticky; top: 0; z-index: 25; }
+.top-banners:empty { display: none; }
+.top-banners .net-banner { position: static; }
+/* 저장하지 못한 줄: 다시 시도·버리기 */
+.save-fail {
+  position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 8px 16px; background: #FDECEA; color: var(--danger); font-size: 13px; line-height: 18px; border-bottom: 1px solid #F5C2C0;
+}
+.save-fail-text { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.save-fail-actions { display: flex; gap: 8px; }
+.btn-mini {
+  min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--danger); background: var(--danger);
+  color: #fff; font-size: 13.5px; font-weight: 700;
+}
+.btn-mini.ghost { background: transparent; color: var(--danger); }
+
+/* 톡톡 튀는 누름과 나타나기 */
+@media (prefers-reduced-motion: no-preference) {
+  .btn-primary, .btn-secondary, .btn-danger, .btn-round, .btn-pill, .icon-btn, .chip, .hint-chip, .btn-mini, .tile, .lrow, .sheet-btn, .srow[role='button'] {
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.18s, box-shadow 0.18s, color 0.18s;
+  }
+  .btn-primary:active, .btn-secondary:active, .btn-danger:active, .btn-round:active, .btn-pill:active, .icon-btn:active,
+  .chip:active, .hint-chip:active, .btn-mini:active, .sheet-btn:active { transform: scale(0.94); transition-duration: 0.1s; }
+  .tile:active { transform: scale(0.96); transition-duration: 0.12s; }
+  .lrow:active, .srow[role='button']:active { transform: scale(0.985); transition-duration: 0.1s; }
+  .chip.on { animation: pop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .toast { animation: toast-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .sheet-backdrop { animation: fade-in 0.2s ease-out; }
+  .sheet { animation: sheet-up 0.44s cubic-bezier(0.32, 0.72, 0, 1); }
+  .tiles.tiles-intro > .tile { animation: tile-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; animation-delay: calc(var(--i, 0) * 35ms); }
+  .save-fail { animation: drop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+  .seg.has-thumb::before { transition: none; }
+  .pending-tag::before { animation: none; }
+}
+@keyframes pop { 0% { transform: scale(0.92); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@keyframes toast-in { from { transform: translate(-50%, 24px) scale(0.96); opacity: 0; } }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes tile-in { from { transform: translateY(10px) scale(0.94); opacity: 0; } }
+@keyframes drop-in { from { transform: translateY(-100%); opacity: 0; } }

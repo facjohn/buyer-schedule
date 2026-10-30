@@ -4,7 +4,7 @@
 //   상차일이 없으면 "미정", 모두 실었으면 "상차 다 끝남".
 // 상차일로 보기: 앞으로의 일정(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩. 상차 당일까지만 보이고(지난 상차는 빠짐), 상차일 없는 줄은 맨 뒤.
 //   위 '지난 일정' 버튼을 누르면 이번 시즌(7월부터) 지난 상차를 최근 날짜부터(2026-10-20 사용자 요청).
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRemembered } from '../lib/uiMemory.js';
 import { fmtKo, fmtKoDateTime, fmtKoYear } from '../lib/dates.js';
 import { buyerCards, loadingDays, seasonLabel, shortNo } from '../lib/schedule.js';
@@ -54,15 +54,54 @@ export default function Home({ data, fetchedAt, loading }) {
   );
 }
 
+// 바둑판 칸이 톡톡 나타나는 움직임은 앱을 처음 열 때 한 번만(뒤로 올 때마다 다시 하면 화면 넘김과 겹쳐 어지럽다)
+let tilesIntroDone = false;
+
 function BuyerTiles({ data }) {
   const cards = useMemo(() => buyerCards(data), [data]);
+  const [intro, setIntro] = useState(() => !tilesIntroDone);
+  useEffect(() => {
+    tilesIntroDone = true;
+    // 나타나기가 끝나면 끈다(목록이 새로 와서 칸 순서가 바뀌어도 다시 튀어나오지 않게)
+    const t = setTimeout(() => setIntro(false), 1200);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <>
       <div className="section-title">다음 상차 가까운 순</div>
-      <div className="tiles">
-        {cards.map((c) => {
+      <div className={'tiles' + (intro ? ' tiles-intro' : '')}>
+        {cards.map((c, i) => {
+          const next = (
+            <div className="tile-next">
+              {c.next ? (
+                <>
+                  <div className="tile-label">다음 상차</div>
+                  <div className="tile-date">{c.next.loadDate ? fmtKo(c.next.loadDate) : '미정'}</div>
+                  <div className="tile-what">{c.next.fruits}{c.next.ship ? ` · ${c.next.ship}` : ''}</div>
+                </>
+              ) : (
+                <div className="tile-label">{c.allLoaded ? '상차 다 끝남' : '앞으로 일정 없음'}</div>
+              )}
+            </div>
+          );
+          // @미정 칸: 왼쪽에 이름·다음 상차, 오른쪽을 미정 수가 크게 차지한다(2026-10-30 사용자 요청 "숫자가 오른쪽 대부분 공간을")
+          if (c.tbd) {
+            return (
+              <button key={c.buyer.name} type="button" className="tile tile-tbd" style={{ '--i': i }}
+                aria-label={`${c.buyer.name} 미정 ${c.count}건`} onClick={() => navigate(buyerPath(c.buyer.name))}>
+                <div className="tbd-left">
+                  <div className="tile-name">{c.buyer.name}</div>
+                  {next}
+                </div>
+                <span className="tbd-count" style={{ '--d': Math.max(1, String(c.count).length) }}>
+                  <span className="num">{c.count}</span>
+                  <span>예정</span>
+                </span>
+              </button>
+            );
+          }
           return (
-            <button key={c.buyer.name} type="button" className={'tile' + (c.tbd ? ' tile-tbd' : '')}
+            <button key={c.buyer.name} type="button" className={'tile' + (c.tbd ? ' tile-tbd' : '')} style={{ '--i': i }}
               onClick={() => navigate(buyerPath(c.buyer.name))}>
               <div className="tile-top">
                 <div className="tile-name">{c.buyer.name}</div>
@@ -71,8 +110,7 @@ function BuyerTiles({ data }) {
                   <span>예정</span>
                 </span>
               </div>
-              {c.tbd ? (!c.tbdBuyer && !c.tbdOrigin && <div className="tile-country">바이어·산지 미정</div>)
-                : c.buyer.country && <div className="tile-country">{c.buyer.country}</div>}
+              {c.buyer.country && <div className="tile-country">{c.buyer.country}</div>}
               {/* 미정 알림: 빨간 꼬리표(깜빡이는 테두리)로 칸 안에 "산지 미정 1건"(2026-10-30 사용자 요청) */}
               {(c.tbdBuyer > 0 || c.tbdOrigin > 0) && (
                 <div className="tile-alerts">
@@ -80,21 +118,11 @@ function BuyerTiles({ data }) {
                   {c.tbdOrigin > 0 && <TbdChip>산지 미정 {c.tbdOrigin}건</TbdChip>}
                 </div>
               )}
-              <div className="tile-next">
-                {c.next ? (
-                  <>
-                    <div className="tile-label">다음 상차</div>
-                    <div className="tile-date">{c.next.loadDate ? fmtKo(c.next.loadDate) : '미정'}</div>
-                    <div className="tile-what">{c.next.fruits}{c.next.ship ? ` · ${c.next.ship}` : ''}</div>
-                  </>
-                ) : (
-                  <div className="tile-label">{c.allLoaded ? '상차 다 끝남' : '앞으로 일정 없음'}</div>
-                )}
-              </div>
+              {next}
             </button>
           );
         })}
-        <button type="button" className="tile tile-add" onClick={() => navigate('/buyer/new')}>
+        <button type="button" className="tile tile-add" style={{ '--i': cards.length }} onClick={() => navigate('/buyer/new')}>
           <IconPlus size={28} />
           <span>바이어 추가</span>
         </button>
@@ -125,12 +153,14 @@ function LoadingList({ data }) {
           {d.rows.map((r) => {
             const no = shortNo(r.no);
             return (
-              <button key={r.id} type="button" className={'lrow' + (isTbdRow(r) ? ' tbd' : '')}
+              <button key={r.id} type="button" className={'lrow' + (isTbdRow(r) ? ' tbd' : '') + (r.pending ? ' pending' : '')}
+                disabled={!!r.pending}
                 aria-label={`${r.buyer} No. ${r.no || ''} ${r.fruit} ${r.specKo} 상차 ${fmtKo(d.date) || '미정'}`}
                 onClick={() => navigate('/edit/' + encodeURIComponent(r.id))}>
                 {isTbdBuyer(r.buyer) ? <TbdChip>바이어 미정</TbdChip> : <span className="lrow-buyer">{r.buyer}</span>}
                 {no && <span className="lrow-no num">No.{no}</span>}
                 <span className={'lrow-fruit' + fruitToneClass(r.fruit)}>{r.fruit || '과일 없음'}</span>
+                {r.pending && <span className="pending-tag">저장 중</span>}
                 {r.ship && <span className="ship-chip">{r.ship}</span>}
                 {r.specKo && <span className="lrow-spec">{r.specKo}</span>}
                 {isTbdOrigin(r.origin) ? <TbdChip>산지 미정</TbdChip> : r.origin && <span className="origin-chip">{r.origin}</span>}

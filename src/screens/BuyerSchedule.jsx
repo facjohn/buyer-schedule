@@ -131,7 +131,7 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
           title={`No. ${menuRow.no || ''} · ${menuRow.fruit} ${menuRow.specKo} · ${fmtKo(menuRow.eta)}`}
           onClose={closeMenu}
           actions={confirmDelete ? [
-            { label: '정말 지울까요? 지우기', danger: true, icon: <IconTrash />, onClick: () => { const id = menuRow.id; closeMenu(); onRemove(id); } }
+            { label: '정말 지울까요? 지우기', danger: true, icon: <IconTrash />, onClick: () => { const r = menuRow; closeMenu(); onRemove(r.id, [r.no ? 'No. ' + r.no : '', r.fruit, r.specKo, '지우기'].filter(Boolean).join(' ')); } }
           ] : [
             { label: `같은 컨테이너(No. ${menuRow.no || ''})에 사이즈 추가`, icon: <IconCopy />, onClick: () => { const id = menuRow.id; closeMenu(); navigate('/dup/' + encodeURIComponent(id)); } },
             { label: '다음 선적으로 복제', icon: <IconCopy />, onClick: () => { const id = menuRow.id; closeMenu(); navigate('/dup/' + encodeURIComponent(id) + '?as=next'); } },

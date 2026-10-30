@@ -112,7 +112,8 @@ export function makeWorld(sheets = {}) {
       getScriptProperties: () => ({
         getProperty: (k) => (props.has(k) ? props.get(k) : null),
         setProperty: (k, v) => props.set(k, v),
-        deleteProperty: (k) => props.delete(k)
+        deleteProperty: (k) => props.delete(k),
+        getKeys: () => [...props.keys()]
       })
     },
     CacheService: {
@@ -136,6 +137,7 @@ export function makeWorld(sheets = {}) {
 
   return {
     ctx,
+    cacheMap, // 캐시를 비워 시간이 지난 것처럼 확인할 때
     sheet: (key) => book.sheets[ctx.TAB[key]],
     /** 탭을 객체 배열로 다시 읽는다(시트 행 번호 _row 포함). */
     read: (key) => {
