@@ -411,23 +411,16 @@ h1, h2, p { margin: 0; }
 .origin-row .chip { flex: none; height: 48px; border-radius: 12px; }
 .origin-row .chip.on { border-color: var(--urgent); background: var(--urgent); color: #fff; font-weight: 800; }
 /* 홈 @미정 칸은 노랑(2026-10-30 사용자 요청) */
-.tile.tile-tbd { background: var(--tbd-tile); box-shadow: 0 1px 2px rgba(24, 32, 29, 0.08), inset 0 0 0 2px #F2C200; }
-.tile.tile-tbd .tile-count, .tile.tile-tbd .tile-label { color: #A8101F; } /* 노랑 위에서 읽히게 더 진한 빨강 */
-.tile.tile-tbd .tile-country { color: var(--text-3); font-weight: 600; }
-/* @미정 칸: 왼쪽 이름·다음 상차, 오른쪽을 미정 수가 크게 차지(2026-10-30 사용자 요청: 알림 대신 숫자를 크게).
-   숫자 크기는 칸 폭(cqw)에 맞추고 자릿수(--d)가 늘면 작아진다 */
-.tile.tile-tbd { flex-direction: row; align-items: stretch; gap: 4px; }
-.tbd-left { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-.tbd-left .tile-next { margin-top: auto; }
-.tile.tile-tbd .tile-date { font-size: 14px; line-height: 19px; white-space: normal; }
-.tile.tile-tbd .tile-what { white-space: normal; }
-.tbd-count {
-  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  color: #A8101F; font-size: 13px; line-height: 16px; font-weight: 700;
+.tile.tile-tbd {
+  position: relative; background: var(--tbd-tile); box-shadow: 0 1px 2px rgba(24, 32, 29, 0.08), inset 0 0 0 2px #F2C200;
 }
-.tbd-count .num {
-  font-size: 64px; font-size: calc(var(--tile-w) * 0.58 / (0.55 + 0.45 * var(--d, 1)));
-  line-height: 0.9; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
+.tile.tile-tbd .tile-name { flex: none; }
+/* @미정 칸: 위에 이름, 미정 줄 수만 칸 한가운데(2026-11-02 사용자 요청: "예정" 글자·다음 상차 빼고 숫자는 조금 작게 가운데로).
+   숫자 크기는 칸 한 변(--tile-w)에 맞추고 자릿수(--d)가 늘면 작아진다. 노랑 위에서 읽히게 더 진한 빨강 */
+.tbd-count {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;
+  color: #A8101F; font-size: 56px; font-size: calc(var(--tile-w) * 0.48 / (0.55 + 0.45 * var(--d, 1)));
+  line-height: 1; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums;
 }
 /* 바둑판 칸 안 미정 알림(2026-10-30 사용자 요청: 알람처럼 눈에 띄게) */
 .tile-alerts { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; min-width: 0; }

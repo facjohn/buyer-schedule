@@ -72,6 +72,18 @@ function BuyerTiles({ data }) {
       <div className="tiles-wrap">
       <div className={'tiles' + (intro ? ' tiles-intro' : '')}>
         {cards.map((c, i) => {
+          // @미정 칸: 이름과 미정 줄 수만, 숫자는 칸 한가운데(2026-11-02 사용자 요청: "예정" 글자·다음 상차는 빼고 숫자는 조금 작게)
+          if (c.tbd) {
+            return (
+              <button key={c.buyer.name} type="button" className="tile tile-tbd" style={{ '--i': i }}
+                aria-label={`${c.buyer.name} 미정 ${c.count}건`} onClick={() => navigate(buyerPath(c.buyer.name))}>
+                <div className="tile-name">{c.buyer.name}</div>
+                <span className="tbd-count" style={{ '--d': Math.max(1, String(c.count).length) }} aria-hidden="true">
+                  {c.count}
+                </span>
+              </button>
+            );
+          }
           const next = (
             <div className="tile-next">
               {c.next ? (
@@ -85,24 +97,8 @@ function BuyerTiles({ data }) {
               )}
             </div>
           );
-          // @미정 칸: 왼쪽에 이름·다음 상차, 오른쪽을 미정 수가 크게 차지한다(2026-10-30 사용자 요청 "숫자가 오른쪽 대부분 공간을")
-          if (c.tbd) {
-            return (
-              <button key={c.buyer.name} type="button" className="tile tile-tbd" style={{ '--i': i }}
-                aria-label={`${c.buyer.name} 미정 ${c.count}건`} onClick={() => navigate(buyerPath(c.buyer.name))}>
-                <div className="tbd-left">
-                  <div className="tile-name">{c.buyer.name}</div>
-                  {next}
-                </div>
-                <span className="tbd-count" style={{ '--d': Math.max(1, String(c.count).length) }}>
-                  <span className="num">{c.count}</span>
-                  <span>예정</span>
-                </span>
-              </button>
-            );
-          }
           return (
-            <button key={c.buyer.name} type="button" className={'tile' + (c.tbd ? ' tile-tbd' : '')} style={{ '--i': i }}
+            <button key={c.buyer.name} type="button" className="tile" style={{ '--i': i }}
               onClick={() => navigate(buyerPath(c.buyer.name))}>
               <div className="tile-top">
                 <div className="tile-name">{c.buyer.name}</div>
