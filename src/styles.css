@@ -453,6 +453,8 @@ h1, h2, p { margin: 0; }
 /* 입력 화면: 바이어 미정을 고르면 고르기 칸이 빨강, 산지 미정 버튼이 켜지면 빨강 */
 .input.select-input.tbd { background: var(--urgent); border-color: var(--urgent); color: #fff; }
 .input.select-input.tbd select { color: #fff; font-weight: 800; }
+/* 펼친 목록은 늘 흰 바탕 검은 글자(빨간 칸의 흰 글자를 목록 줄까지 물려받아 PC 크롬에서 글씨가 안 보였음, 2026-11-02) */
+.select-input select option { color: var(--text); background: #fff; font-weight: 400; }
 .input.tbd { background: #FDECEC; border-color: var(--urgent); }
 .input.tbd::placeholder { color: var(--urgent); font-weight: 700; }
 /* 산지 칸과 산지 미정 버튼은 한 줄(버튼은 입력칸 높이에 맞춤) */
