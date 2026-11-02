@@ -1,28 +1,30 @@
-// ① 홈: 맨 위 '바이어별 보기 / 상차일로 보기' 버튼(2026-10-20 사용자 요청, 바이어 검색은 없앰).
+// ① 홈: 맨 위 '바이어별 보기 / 상차일로 보기 / 달력으로 보기' 버튼(2026-10-20 사용자 요청, 바이어 검색은 없앰. 달력은 2026-11-02 사용자 요청).
 // 홈 바탕은 아이보리, 바둑판 칸은 흰색(2026-10-20 사용자 요청).
 // 바이어별 보기: 바이어 바둑판(두 칸씩, 모두 같은 색, 다음 상차 가까운 순. 바이어마다 다른 색은 2026-10-20 사용자 요청으로 없앰: 헷갈림). 카드에는 다음 ETA 대신 다음 상차(2026-10-20 사용자 요청).
 //   상차일이 없으면 "미정", 모두 실었으면 "상차 다 끝남".
 // 상차일로 보기: 앞으로의 일정(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩. 상차 당일까지만 보이고(지난 상차는 빠짐), 상차일 없는 줄은 맨 뒤.
 //   위 '지난 일정' 버튼을 누르면 이번 시즌(7월부터) 지난 상차를 최근 날짜부터(2026-10-20 사용자 요청).
+// 달력으로 보기: src/components/LoadCalendar.jsx
 import { useEffect, useMemo, useState } from 'react';
 import { useRemembered } from '../lib/uiMemory.js';
 import { fmtKo, fmtKoDateTime, fmtKoYear } from '../lib/dates.js';
-import { buyerCards, loadingDays, seasonLabel, shortNo } from '../lib/schedule.js';
+import { buyerCards, loadingDays, seasonLabel } from '../lib/schedule.js';
 import { navigate, buyerPath } from '../router.js';
 import { Chip, Segmented } from '../components/Controls.jsx';
-import { fruitToneClass } from '../lib/fruitTone.js';
-import { isTbdBuyer, isTbdOrigin, isTbdRow } from '../lib/undecided.js';
 import TbdChip from '../components/TbdChip.jsx';
+import LoadRow from '../components/LoadRow.jsx';
+import LoadCalendar from '../components/LoadCalendar.jsx';
 import { IconPlus, IconSheet } from '../components/icons.jsx';
 
 const VIEWS = [
   { value: 'buyers', label: '바이어별 보기' },
-  { value: 'load', label: '상차일로 보기' }
+  { value: 'load', label: '상차일로 보기' },
+  { value: 'cal', label: '달력으로 보기' }
 ];
 
 export default function Home({ data, fetchedAt, loading }) {
   const [viewRaw, setView] = useRemembered('home.view', 'buyers');
-  const view = viewRaw === 'load' ? 'load' : 'buyers';
+  const view = viewRaw === 'load' || viewRaw === 'cal' ? viewRaw : 'buyers';
 
   return (
     <div className="screen home">
@@ -49,7 +51,7 @@ export default function Home({ data, fetchedAt, loading }) {
         <Segmented options={VIEWS} value={view} onChange={setView} label="보기" />
       </div>
 
-      {view === 'load' ? <LoadingList data={data} /> : <BuyerTiles data={data} />}
+      {view === 'load' ? <LoadingList data={data} /> : view === 'cal' ? <LoadCalendar data={data} /> : <BuyerTiles data={data} />}
     </div>
   );
 }
@@ -129,8 +131,7 @@ function BuyerTiles({ data }) {
   );
 }
 
-/** 상차일로 보기: 날짜 제목 아래 한 줄씩(바이어 · No. · 과일 · 운송 · 스펙 · 산지). 누르면 그 줄 고치기.
- *  바이어 칩은 모두 같은 색(2026-10-20 사용자 요청: 바이어마다 색이 다르면 헷갈림) */
+/** 상차일로 보기: 날짜 제목 아래 한 줄씩(줄 모양은 components/LoadRow.jsx) */
 function LoadingList({ data }) {
   const [periodRaw, setPeriod] = useRemembered('home.load.period', 'future');
   const past = periodRaw === 'past';
@@ -148,23 +149,7 @@ function LoadingList({ data }) {
             {d.date ? fmtKoYear(d.date, data.today) : '상차일 미정'}
             {d.isToday && <span className="lday-tag today">오늘</span>}
           </h2>
-          {d.rows.map((r) => {
-            const no = shortNo(r.no);
-            return (
-              <button key={r.id} type="button" className={'lrow' + (isTbdRow(r) ? ' tbd' : '') + (r.pending ? ' pending' : '')}
-                disabled={!!r.pending}
-                aria-label={`${r.buyer} No. ${r.no || ''} ${r.fruit} ${r.specKo} 상차 ${fmtKo(d.date) || '미정'}`}
-                onClick={() => navigate('/edit/' + encodeURIComponent(r.id))}>
-                {isTbdBuyer(r.buyer) ? <TbdChip>바이어 미정</TbdChip> : <span className="lrow-buyer">{r.buyer}</span>}
-                {no && <span className="lrow-no num">No.{no}</span>}
-                <span className={'lrow-fruit' + fruitToneClass(r.fruit)}>{r.fruit || '과일 없음'}</span>
-                {r.pending && <span className="pending-tag">저장 중</span>}
-                {r.ship && <span className="ship-chip">{r.ship}</span>}
-                {r.specKo && <span className="lrow-spec">{r.specKo}</span>}
-                {isTbdOrigin(r.origin) ? <TbdChip>산지 미정</TbdChip> : r.origin && <span className="origin-chip">{r.origin}</span>}
-              </button>
-            );
-          })}
+          {d.rows.map((r) => <LoadRow key={r.id} r={r} />)}
         </section>
       ))}
     </div>

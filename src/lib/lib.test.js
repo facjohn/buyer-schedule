@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, addMonths, addDays } from './dates.js';
+import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, fmtMonthKoFull, addMonths, addDays, addMonthKey, monthInfo } from './dates.js';
 import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
-import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, seasonLabel, seasonStartIso, shipmentKey, sortByNo, sortRecentFirst } from './schedule.js';
+import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, rowsByLoadDate, seasonLabel, seasonStartIso, shipmentKey, sortByNo, sortRecentFirst } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
 import { fruitTone } from './fruitTone.js';
 import { isTbdBuyer, isTbdOrigin, isTbdRow, rowsForBuyer, buyerLabel } from './undecided.js';
@@ -182,6 +182,34 @@ describe('홈 상차일로 보기 (2026-10-20 사용자 요청)', () => {
       ['2026-10-16', ['h9']],
       ['2026-10-15', ['h7']],
       ['2026-10-10', ['old']]
+    ]);
+  });
+});
+
+describe('홈 달력으로 보기 (2026-11-02 사용자 요청)', () => {
+  it('달력 한 달: 1일의 요일과 날 수, 달 넘기기, 제목', () => {
+    expect(monthInfo('2026-11')).toEqual({ lead: 0, days: 30 }); // 2026년 11월 1일은 일요일
+    expect(monthInfo('2026-10')).toEqual({ lead: 4, days: 31 }); // 목요일
+    expect(monthInfo('2027-02')).toEqual({ lead: 1, days: 28 });
+    expect(monthInfo('2028-02').days).toBe(29);
+    expect(addMonthKey('2026-12', 1)).toBe('2027-01');
+    expect(addMonthKey('2027-01', -1)).toBe('2026-12');
+    expect(addMonthKey('2026-11', -12)).toBe('2025-11');
+    expect(fmtMonthKoFull('2026-11')).toBe('2026년 11월');
+  });
+  it('상차일마다 그날 줄: 지난 상차도 그대로, 같은 날은 바이어 탭 순서 → No. 순, 상차일 빈 줄은 없음', () => {
+    const rows = [
+      { id: 'k6', buyer: '킹고', no: 6, noYear: 2026, eta: '2026-10-26', loadDate: '2026-10-22' },
+      { id: 's4', buyer: '샤인', no: 4, noYear: 2026, eta: '2026-10-26', loadDate: '2026-10-22' },
+      { id: 'k5', buyer: '킹고', no: 5, noYear: 2026, eta: '2026-10-26', loadDate: '2026-10-22' },
+      { id: 'x1', buyer: '탭에없음', no: 1, noYear: 2026, eta: '2026-10-26', loadDate: '2026-10-22' },
+      { id: 'old', buyer: '킹고', no: 1, noYear: 2026, eta: '2026-10-19', loadDate: '2026-10-10' },
+      { id: 'p9', buyer: '포미나', no: 9, noYear: 2026, eta: '', loadDate: '' }
+    ];
+    const map = rowsByLoadDate({ today: '2026-10-20', rows, buyers: [{ name: '킹고' }, { name: '샤인' }] });
+    expect([...map.entries()].map(([k, v]) => [k, v.map((r) => r.id)]).sort()).toEqual([
+      ['2026-10-10', ['old']],
+      ['2026-10-22', ['k5', 'k6', 's4', 'x1']]
     ]);
   });
 });

@@ -89,6 +89,23 @@ export function addMonths(iso, n) {
   return fromUtc(first);
 }
 
+/** 'yyyy-MM'에서 n달 앞뒤 'yyyy-MM' (홈 달력 넘기기) */
+export function addMonthKey(monthKey, n) {
+  return addMonths(monthKey + '-01', n).slice(0, 7);
+}
+
+/** 달력 한 달: 1일의 요일(0=일요일)과 그달 날 수. monthKey 'yyyy-MM' */
+export function monthInfo(monthKey) {
+  const [y, m] = monthKey.split('-').map(Number);
+  return { lead: new Date(Date.UTC(y, m - 1, 1)).getUTCDay(), days: new Date(Date.UTC(y, m, 0)).getUTCDate() };
+}
+
+/** 달력 제목 "2026년 11월"(해는 늘 쓴다) */
+export function fmtMonthKoFull(monthKey) {
+  const [y, m] = monthKey.split('-').map(Number);
+  return `${y}년 ${m}월`;
+}
+
 export function daysBetween(a, b) {
   return Math.round((toUtc(b) - toUtc(a)) / 86400000);
 }

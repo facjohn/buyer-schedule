@@ -230,8 +230,7 @@ export function buyerCards(data) {
  */
 export function loadingDays(data, { past = false } = {}) {
   const today = data.today;
-  const orderOf = new Map((data.buyers || []).map((b, i) => [b.name, i]));
-  const ord = (r) => (orderOf.has(r.buyer) ? orderOf.get(r.buyer) : orderOf.size);
+  const ord = buyerOrder(data);
   const from = seasonStartIso(today);
   const keep = past
     ? (r) => loadedPast(r, today) && r.loadDate >= from
@@ -253,6 +252,28 @@ export function loadingDays(data, { past = false } = {}) {
     d.rows.push(r);
   }
   return days;
+}
+
+/** 줄의 바이어가 바이어 탭에서 몇 번째인지(탭에 없는 이름은 맨 뒤). 같은 상차일 안 순서용 */
+function buyerOrder(data) {
+  const orderOf = new Map((data.buyers || []).map((b, i) => [b.name, i]));
+  return (r) => (orderOf.has(r.buyer) ? orderOf.get(r.buyer) : orderOf.size);
+}
+
+/**
+ * 홈 '달력으로 보기'(2026-11-02 사용자 요청): 상차일마다 그날 싣는 줄. 지난 상차도 빼지 않는다(달력에서 지난 날도 보이게).
+ * 같은 날 순서는 상차일로 보기와 같다(바이어 탭 순서 → No. 순). 상차일이 빈 줄은 없다(loadingDays의 '상차일 미정' 묶음).
+ * Map('yyyy-MM-dd' → rows)
+ */
+export function rowsByLoadDate(data) {
+  const ord = buyerOrder(data);
+  const map = new Map();
+  for (const r of sortByNo((data.rows || []).filter((r) => r.loadDate))) {
+    if (!map.has(r.loadDate)) map.set(r.loadDate, []);
+    map.get(r.loadDate).push(r);
+  }
+  for (const rows of map.values()) rows.sort((a, b) => ord(a) - ord(b) || cmp(a.buyer, b.buyer));
+  return map;
 }
 
 /** 숫자만 쓰는 옛 번호의 예상값: 그 바이어·해의 최댓값(지운 번호 포함) + 1 */
