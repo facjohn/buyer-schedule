@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { fmtKo, fmtKoYear, fmtEn, fmtEnLong, fmtMonthKo, fmtMonthEn, fmtMonthKoFull, addMonths, addDays, addMonthKey, monthInfo } from './dates.js';
 import { fmtPrice, fmtWon, parseMoney } from './money.js';
 import { toBuyerRow, BUYER_FIELDS, fruitEnMap } from './buyerView.js';
-import { buyerCards, containersOf, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, rowsByLoadDate, seasonLabel, seasonStartIso, shipmentKey, sortByNo, sortRecentFirst } from './schedule.js';
+import { buyerCards, containersOf, countShipments, derivedSpecEn, expectedNo, filterPeriod, groupByMonth, groupInNoOrder, lastCost, lastPrice, loadedPast, loadingDays, rowsByLoadDate, seasonLabel, seasonStartIso, shipmentKey, sortByNo, sortRecentFirst } from './schedule.js';
 import { extractCode, codeFromUrl } from './link.js';
 import { fruitTone } from './fruitTone.js';
+import { holidayOf, HOLIDAY_YEARS } from './holidays.js';
 import { isTbdBuyer, isTbdOrigin, isTbdRow, rowsForBuyer, buyerLabel } from './undecided.js';
 
 describe('날짜 표기 (표기 규칙)', () => {
@@ -211,6 +212,71 @@ describe('홈 달력으로 보기 (2026-11-02 사용자 요청)', () => {
       ['2026-10-10', ['old']],
       ['2026-10-22', ['k5', 'k6', 's4', 'x1']]
     ]);
+  });
+  it('몇 대: 같은 No.의 줄 여러 개는 1대, 번호 없는 줄은 줄마다 1대, 숫자 번호는 시즌이 다르면 다른 대 (2026-11-06 사용자 결정)', () => {
+    const rows = [
+      { id: 'a', buyer: '킹고', no: 'KINGO-26-01', noYear: 2026, specKo: '15kg 18-24' },
+      { id: 'b', buyer: '킹고', no: 'KINGO-26-01', noYear: 2026, specKo: '15kg 26-30' },
+      { id: 'c', buyer: '샤인', no: 1, noYear: 2026 },
+      { id: 'd', buyer: '샤인', no: 1, noYear: 2025 },
+      { id: 'e', buyer: '킹고', no: 1, noYear: 2026 },
+      { id: 'p1', buyer: '킹고', no: '' },
+      { id: 'p2', buyer: '킹고', no: '' }
+    ];
+    expect(countShipments(rows)).toBe(6);
+    expect(countShipments(rows.slice(0, 2))).toBe(1);
+    expect(countShipments([])).toBe(0);
+  });
+  it('몇 대: 창구가 번호를 붙일 저장 중인 새 줄은 미리 채운 번호가 같아도 줄마다, 인보이스 번호는 번호 해가 비어도 같은 대(창구 findContainer_처럼)', () => {
+    const pending = [
+      { id: 'tmp-1', buyer: '킹고', no: 'KINGO-26-02', noYear: 2026, noAuto: true, pending: true },
+      { id: 'tmp-2', buyer: '킹고', no: 'KINGO-26-02', noYear: 2026, noAuto: true, pending: true }
+    ];
+    expect(countShipments(pending)).toBe(2);
+    expect(countShipments(pending.map((r) => ({ ...r, noAuto: false })))).toBe(1);
+    expect(countShipments([
+      { id: 'a', buyer: '킹고', no: 'KINGO-26-01', noYear: 2026 },
+      { id: 'b', buyer: '킹고', no: 'kingo-26-01', noYear: null, eta: '' }
+    ])).toBe(1);
+  });
+});
+
+describe('달력 한국 공휴일 (2026-11-06 사용자 요청)', () => {
+  it('이름과 칸에 넣는 짧은 이름', () => {
+    expect(holidayOf('2026-10-03')).toEqual({ name: '개천절', short: '개천절' });
+    expect(holidayOf('2026-10-05')).toEqual({ name: '대체공휴일(개천절)', short: '대체휴일' });
+    expect(holidayOf('2026-05-24').short).toBe('석탄일');
+    expect(holidayOf('2025-05-05').short).toBe('어린이날'); // 부처님오신날과 겹친 날
+    expect(holidayOf('2030-06-12').short).toBe('선거일');
+    expect(holidayOf('2025-01-27').short).toBe('임시휴일');
+    expect(holidayOf('2026-10-14')).toBe(null);
+    expect(holidayOf('')).toBe(null);
+  });
+  it('2026년 법 개정: 노동절(5/1)·제헌절(7/17) 공휴일과 대체공휴일, 그 전 해는 아님', () => {
+    expect(holidayOf('2026-05-01').name).toBe('노동절');
+    expect(holidayOf('2026-07-17').name).toBe('제헌절');
+    expect(holidayOf('2027-05-03').name).toBe('대체공휴일(노동절)');
+    expect(holidayOf('2027-07-19').name).toBe('대체공휴일(제헌절)');
+    expect(holidayOf('2025-05-01')).toBe(null);
+    expect(holidayOf('2025-07-17')).toBe(null);
+  });
+  it('음력 공휴일은 한국 날짜(2027·2028 설날은 중국과 하루 다름)', () => {
+    expect(holidayOf('2027-02-07').name).toBe('설날');
+    expect(holidayOf('2027-02-09').name).toBe('대체공휴일(설날)');
+    expect(holidayOf('2028-01-27').name).toBe('설날');
+    expect(holidayOf('2028-01-25')).toBe(null);
+    expect(holidayOf('2028-10-05').short).toBe('대체휴일'); // 추석·개천절 겹침
+  });
+  it('표: 2025~2030년, 대체공휴일은 모두 평일, 표 뒤의 해는 고정 날짜만', () => {
+    expect(HOLIDAY_YEARS).toEqual([2025, 2026, 2027, 2028, 2029, 2030]);
+    for (let t = Date.UTC(2025, 0, 1); t <= Date.UTC(2030, 11, 31); t += 864e5) {
+      const d = new Date(t);
+      const h = holidayOf(d.toISOString().slice(0, 10));
+      if (h && h.name.startsWith('대체공휴일')) expect([1, 2, 3, 4, 5]).toContain(d.getUTCDay());
+    }
+    expect(holidayOf('2031-05-01').name).toBe('노동절');
+    expect(holidayOf('2031-12-25').short).toBe('성탄절');
+    expect(holidayOf('2024-03-01')).toBe(null);
   });
 });
 

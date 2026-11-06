@@ -276,6 +276,17 @@ export function rowsByLoadDate(data) {
   return map;
 }
 
+/**
+ * 몇 대인지(달력의 날짜 숫자·한 달 합계, 2026-11-06 사용자 결정 "No. 하나 = 1대"): 같은 선적(No.)의 줄 여러 개는 1대,
+ * 번호가 아직 없는 줄(시트에 막 붙인 줄, 창구가 번호를 붙일 새 줄은 미리 채운 번호가 보여도 noAuto)은 줄마다 1대.
+ * 같은 선적인지는 창구 findContainer_처럼: 인보이스 번호(KINGO-26-01)는 바이어와 번호만, 숫자만 쓰는 옛 번호는 번호 해까지.
+ */
+export function countShipments(rows) {
+  return new Set(rows.map((r) => (!hasNo(r) || r.noAuto ? 'id:' + r.id
+    : isLegacyNo(r) ? shipmentKey(r)
+    : `${r.buyer}|${String(r.no).trim().toUpperCase()}`))).size;
+}
+
 /** 숫자만 쓰는 옛 번호의 예상값: 그 바이어·해의 최댓값(지운 번호 포함) + 1 */
 export function expectedNo(noMax, buyer, year) {
   return ((noMax || {})[`${buyer}|${year}`] || 0) + 1;

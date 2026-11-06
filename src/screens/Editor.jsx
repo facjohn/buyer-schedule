@@ -286,6 +286,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
         kind: 'new',
         row: {
           id: 'tmp-' + saveKey, buyer: form.buyer, no: asNo(shownNo),
+          noAuto: !item.join && !item.no, // 보이는 번호는 미리 채운 값일 뿐(창구가 붙임): 달력 대 수에서 줄마다 1대
           noYear: item.join ? item.join.noYear : etaYear,
           fruit: form.fruit, ship: form.ship, specKo: form.specKo.trim(), specEn: norm('specEn', form.specEn),
           eta: form.etaTbd ? '' : form.eta, loadDate: form.loadDate,

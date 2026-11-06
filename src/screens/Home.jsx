@@ -3,7 +3,7 @@
 // 바이어별 보기: 바이어 바둑판(두 칸씩, 모두 같은 색, 다음 상차 가까운 순. 바이어마다 다른 색은 2026-10-20 사용자 요청으로 없앰: 헷갈림). 카드에는 다음 ETA 대신 다음 상차(2026-10-20 사용자 요청).
 //   상차일이 없으면 "미정", 모두 실었으면 "상차 다 끝남".
 // 상차일로 보기: 앞으로의 일정(ETA가 오늘 이후이거나 미정)을 상차일 순으로 한 줄씩. 상차 당일까지만 보이고(지난 상차는 빠짐), 상차일 없는 줄은 맨 뒤.
-//   위 '지난 일정' 버튼을 누르면 이번 시즌(7월부터) 지난 상차를 최근 날짜부터(2026-10-20 사용자 요청).
+//   위 '지난 일정' 버튼을 누르면 이번 시즌(7월부터) 지난 상차를 최근 날짜부터(2026-10-20 사용자 요청), 그동안 화면 바탕은 하늘색(2026-11-06 사용자 요청).
 // 달력으로 보기: src/components/LoadCalendar.jsx
 import { useEffect, useMemo, useState } from 'react';
 import { useRemembered } from '../lib/uiMemory.js';
@@ -137,7 +137,7 @@ function LoadingList({ data }) {
   const past = periodRaw === 'past';
   const days = useMemo(() => loadingDays(data, { past }), [data, past]);
   return (
-    <div className="loadlist">
+    <div className={'loadlist' + (past ? ' past' : '')}>
       <div className="filters">
         <Chip on={past} onClick={() => setPeriod(past ? 'future' : 'past')}>지난 일정</Chip>
       </div>
