@@ -68,6 +68,28 @@ describe('JPG 모델 (규칙 1: 허용한 칸만)', () => {
     expect(warnings.join(' ')).toContain('15kg 18-24');
     expect(model.rows[0].spec).toBe('');
   });
+
+  it('과일·운송·스펙이 빈 줄(빈 칸이 있어도 저장, 2026-11-10)은 "과일 \\"\\"의 영어" 대신 빈 줄 수로 알린다', () => {
+    const blank = { ...data, rows: [
+      { ...data.rows[1], fruit: '', ship: '', specKo: '', specEn: '' },
+      { ...data.rows[2], fruit: '', specEn: '' }
+    ] };
+    const { model, warnings } = buildJpg(blank, '킹고');
+    const w = warnings.join(' | ');
+    expect(w).toContain('과일이 비어 있는 줄 2개');
+    expect(w).toContain('운송이 비어 있는 줄 1개');
+    expect(w).toContain('스펙이 비어 있는 줄 1개');
+    expect(w).not.toContain('"15kg 26-30"의 스펙 영어'); // 과일이 빈 줄은 과일부터 채우라고(스펙 탭은 과일별)
+    expect(w).not.toContain('과일 ""');
+    expect(model.rows[0]).toMatchObject({ fruit: '', ship: '', spec: '' });
+  });
+
+  it('과일이 빈 줄의 한글 스펙은 스펙 탭 안내 대신 과일부터 채우라고(스펙 탭은 과일별)', () => {
+    const blank = { ...data, rows: [{ ...data.rows[1], fruit: '', specKo: '7과', specEn: '' }] };
+    const w = buildJpg(blank, '킹고').warnings.join(' | ');
+    expect(w).toContain('과일이 비어 있는 줄 1개');
+    expect(w).not.toContain('"7과"의 스펙 영어');
+  });
 });
 
 describe('검토에서 나온 경우', () => {

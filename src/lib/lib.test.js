@@ -241,6 +241,19 @@ describe('홈 달력으로 보기 (2026-11-02 사용자 요청)', () => {
   });
 });
 
+describe('빈 칸이 있어도 저장 (2026-11-10 사용자 요청)', () => {
+  it('홈 칸 다음 상차: 과일·운송이 빈 줄이 섞여도 "·신고배"처럼 남지 않고 운송은 적힌 줄에서', () => {
+    const rows = [
+      { id: 'a', buyer: '킹고', no: 'KINGO-26-03', noYear: 2026, fruit: '신고배', ship: '40ft', eta: '2026-11-30', loadDate: '2026-11-20' },
+      { id: 'b', buyer: '킹고', no: 'KINGO-26-03', noYear: 2026, fruit: '', ship: '', eta: '2026-11-30', loadDate: '2026-11-20' }
+    ];
+    const [c] = buyerCards({ today: '2026-11-10', rows, buyers: [{ name: '킹고' }] });
+    expect(c.next).toMatchObject({ fruits: '신고배', ship: '40ft' });
+    const [d] = buyerCards({ today: '2026-11-10', rows: [rows[1]], buyers: [{ name: '킹고' }] });
+    expect(d.next).toMatchObject({ fruits: '', ship: '' });
+  });
+});
+
 describe('달력 한국 공휴일 (2026-11-06 사용자 요청)', () => {
   it('이름과 칸에 넣는 짧은 이름', () => {
     expect(holidayOf('2026-10-03')).toEqual({ name: '개천절', short: '개천절' });

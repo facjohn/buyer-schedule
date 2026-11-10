@@ -142,7 +142,7 @@ export default function JpgPreview({ data, buyerName }) {
           <div className="warn-box" role="status">
             <IconAlert size={18} />
             <span>
-              시트에서 채워 주세요. 비어 있는 칸은 사진에 빈칸이나 "—"로 나가요:
+              채워 주세요. 비어 있는 칸은 사진에 빈칸이나 "—"로 나가요:
               {jpg.warnings.map((w) => <span key={w} className="warn-item">· {w}</span>)}
             </span>
           </div>

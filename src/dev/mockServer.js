@@ -117,6 +117,8 @@ gas.appendRows_(gas.readTable_('fruits'), gas.DEFAULT_FRUITS.map((f, i) => ({
   fruitKo: f[0], fruitEn: f[1], seasonStart: f[0].includes('배') ? 9 : '', sortOrder: i + 1
 })));
 gas.seedSample();
+// 실제 시트처럼 바이어 미정('@미정') 바이어를 둔다(사용자가 바이어 탭에 만든 줄. 없으면 창구가 바이어 미정 저장을 거절한다)
+gas.appendRows_(gas.readTable_('buyers'), [{ name: '@미정', exporter: 'Hyun Nong Fresh', currency: 'USD' }]);
 
 /** 예시 팀원 코드: [{ name, code }] (코드 넣는 화면에서 개발용 버튼으로 보여 준다) */
 export const mockMembers = gas.readTable_('members').rows.map((r) => ({

@@ -200,8 +200,9 @@ export function buyerCards(data) {
       order,
       next: first ? {
         loadDate: first.loadDate || '',
-        fruits: [...new Set(nextRows.map((r) => r.fruit))].join('·'),
-        ship: first.ship
+        // 과일·운송이 빈 줄도 있다(빈 칸이 있어도 저장, 2026-11-10): 빈 값은 빼고, 운송은 그 선적에서 적힌 것
+        fruits: [...new Set(nextRows.map((r) => r.fruit).filter(Boolean))].join('·'),
+        ship: first.ship || (nextRows.find((r) => r.ship) || {}).ship || ''
       } : null,
       allLoaded: rows.length > 0 && !first, // 앞으로의 선적이 있는데 모두 상차가 끝남
       count: rows.length, // 예정 수 = 앞으로의 스케줄 줄 수

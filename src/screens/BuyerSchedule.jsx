@@ -30,12 +30,14 @@ export default function BuyerSchedule({ data, buyerName, focusEta, focusFruit, o
     return focusEta !== null && focusEta !== undefined && !periodShows(p, focusEta, data.today) ? periodFor(focusEta, data.today) : p;
   });
   const period = periodRaw === 'past' ? 'past' : 'future';
+  // 과일을 비워 두고 저장한 줄(focusFruit '')도 과일 필터에 걸리면 안 보이므로 필터를 '전체'로(2026-11-10 검토)
+  const savedJustNow = typeof focusFruit === 'string';
   const [fruit, setFruit] = useRemembered('buyer.fruit.' + buyerName, '',
-    (prev) => (focusFruit && prev && prev !== focusFruit ? '' : prev));
+    (prev) => (savedJustNow && prev && prev !== focusFruit ? '' : prev));
   const [menuRow, setMenuRow] = useState(null);
   // 방금 저장한 줄 표시는 이 화면을 처음 열 때 한 번만 쓴다
   useEffect(() => {
-    if (onFocusUsed && ((focusEta !== null && focusEta !== undefined) || focusFruit)) onFocusUsed();
+    if (onFocusUsed && ((focusEta !== null && focusEta !== undefined) || savedJustNow)) onFocusUsed();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [confirmDelete, setConfirmDelete] = useState(false);
 

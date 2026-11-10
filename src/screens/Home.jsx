@@ -92,7 +92,7 @@ function BuyerTiles({ data }) {
                 <>
                   <div className="tile-label">다음 상차</div>
                   <div className="tile-date">{c.next.loadDate ? fmtKo(c.next.loadDate) : '미정'}</div>
-                  <div className="tile-what">{c.next.fruits}{c.next.ship ? ` · ${c.next.ship}` : ''}</div>
+                  <div className="tile-what">{[c.next.fruits, c.next.ship].filter(Boolean).join(' · ')}</div>
                 </>
               ) : (
                 <div className="tile-label">{c.allLoaded ? '상차 다 끝남' : '앞으로 일정 없음'}</div>

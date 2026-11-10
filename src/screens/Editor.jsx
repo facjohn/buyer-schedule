@@ -1,6 +1,8 @@
 // ③ 스케줄 입력·수정. 한 화면에 한 줄.
 // - 바뀐 칸만 보낸다(규칙 4). 산지가·작업비는 자동으로 넣지 않고 "직전" 안내만(규칙 6).
 // - 복제는 같은 No.(같은 컨테이너)에 같은 값으로 열린다. 사이즈와 가격만 고치면 된다.
+// - 빈 칸이 있어도 저장한다(2026-11-10 사용자 요청 "빈칸을 모두 안 채워도 저장되게"). 바이어를 비우면 바이어 미정(@미정),
+//   ETA를 비우면 ETA 미정으로 저장된다. 빈 과일·운송·스펙은 목록에서 비어 보이고 JPG 미리보기가 알려 준다.
 import { useEffect, useRef, useState } from 'react';
 import { fmtKoDateTime } from '../lib/dates.js';
 import { currencySymbol, fmtWon, moneyInput, parseMoney } from '../lib/money.js';
@@ -96,7 +98,8 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
     touched: {
       price: mode === 'edit',
       cost: mode === 'edit',
-      specEn: false,
+      // 과일을 비워 두고 저장한 줄의 영어는 사람이 친 것으로 본다(나중에 과일을 고르면 지워지지 않게, 2026-11-10 검토)
+      specEn: mode === 'edit' && !!src && !src.fruit && !!src.specEn,
       // 복제는 새 줄이라 바이어를 바꾸면 회사도 새 바이어의 기본 회사로 따라간다
       exporter: initExporterSet,
       no: false // No.를 직접 쳤는지(안 쳤으면 바이어·ETA를 바꿀 때 다음 번호로 따라 바뀐다)
@@ -137,19 +140,22 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
   const buyerObj = data.buyers.find((b) => b.name === form.buyer);
   const currency = (buyerObj && buyerObj.currency) || 'USD';
+  // 새 줄·복제에서 바이어를 비워 두면 바이어 미정(@미정)으로 저장한다(창구는 바이어 없는 줄을 받지 않는다.
+  // 바이어 미정 칸에 모여 눈에 띈다). 미리 채우는 No.도 바이어 미정의 다음 번호. 고치기는 고른 그대로.
+  const buyerToSave = mode === 'edit' ? form.buyer : form.buyer || TBD_BUYER;
   const specInDict = !!(form.fruit && form.specKo.trim() && specEnOf(data.specs, form.fruit, form.specKo));
   // 사전에 없어도 한글이 없는 스펙('4kg/450g')이나 사전 스펙을 '/'로 이은 스펙은 영어가 저절로 정해진다
   const specKnown = specInDict || !!(form.fruit && derivedSpecEn(data.specs, form.fruit, form.specKo));
-  const containers = form.buyer ? containersOf(data.rows, form.buyer, data.today) : [];
+  const containers = buyerToSave ? containersOf(data.rows, buyerToSave, data.today) : [];
   const etaYear = seasonYear(form.eta || data.today); // 번호 해 = ETA(없으면 오늘)의 시즌
-  const sugg = suggestNo(data, form.buyer, etaYear);
+  const sugg = suggestNo(data, buyerToSave, etaYear);
   // No. 판단(무엇을 보여 주고, 무엇을 보내고, 무슨 안내를 할지)은 lib/noPlan.js 한곳에서
-  const noPlan = planNo({ mode, asNext, touched: touched.no, typed: form.no, src, buyer: form.buyer, containers, sugg, etaYear,
+  const noPlan = planNo({ mode, asNext, touched: touched.no, typed: form.no, src, buyer: buyerToSave, containers, sugg, etaYear,
     todayYear: seasonYear(data.today), rows: data.rows });
   const noVal = noPlan.value;
   // 번호 고르기 목록: 앞으로의 선적만(ETA 미정 포함), 고치기에서는 이 줄의 선적은 빼고
   const pickable = containers.filter((c) => c.upcoming &&
-    !(mode === 'edit' && src && form.buyer === src.buyer && String(c.no) === String(src.no) && c.noYear === noYearOf(src)));
+    !(mode === 'edit' && src && buyerToSave === src.buyer && String(c.no) === String(src.no) && c.noYear === noYearOf(src)));
   const costHint = form.fruit && form.specKo ? lastCost(data.rows, { fruit: form.fruit, specKo: form.specKo.trim() }, src && src.id) : {};
   // 산지 칸 자동완성: 전에 쓴 산지 이름(많이 쓴 순)
   const origins = originsOf(data.rows).filter((o) => !isTbdOrigin(o));
@@ -195,28 +201,16 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
     setError('');
   }
 
-  const missing = [];
-  const need = (field, label) => {
-    const empty = !norm(field, form[field]);
-    // 고칠 때는 원래 비어 있던 칸은 막지 않는다(시트에서 만든 줄일 수 있어서)
-    if (empty && (!original || norm(field, original[field]))) missing.push(label);
-  };
-  need('buyer', '바이어');
-  need('fruit', '과일');
-  need('ship', '운송');
-  need('specKo', '스펙');
-  if (form.specKo.trim()) need('specEn', '스펙 영어');
-  if (!form.etaTbd) need('eta', 'ETA(모르면 ETA 미정)');
   // 고친 금액 칸만 확인한다(시트에 '협의'처럼 적혀 있던 칸을 안 건드렸으면 그대로 둔다)
   const badMoney = MONEY_FIELDS.some((f) => !same(norm(f, form[f]), norm(f, init[f])) && Number.isNaN(parseMoney(form[f])));
 
   function buildChanges() {
     const out = {};
     for (const f of [...PLAIN_FIELDS, ...MONEY_FIELDS]) {
-      const v = norm(f, form[f]);
+      const v = f === 'buyer' && !original ? buyerToSave : norm(f, form[f]);
       if (original) {
         if (!same(v, norm(f, original[f]))) out[f] = v === null ? '' : v;
-      } else if (f !== 'buyer' || v) {
+      } else {
         // 새 줄은 빈 칸도 ''로 보낸다(응답만 끊겨 다시 보낼 때 그사이 지운 칸도 시트에서 지워지게)
         out[f] = v === null ? '' : v;
       }
@@ -224,9 +218,14 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
     // 스펙 영어: 사람이 직접 고쳤거나 사전에 없는 스펙일 때만 보낸다.
     // 사전에서 자동으로 채운 값을 보내면, 그사이 시트 스펙 탭에서 고친 영어를 옛 값으로 되돌릴 수 있다.
+    // 과일·스펙을 바꿨으면 영어가 같아도 보낸다(안 보내면 창구가 줄의 옛 영어를 지우고, 보내야 스펙 탭에도 더해진다)
     const en = norm('specEn', form.specEn);
-    if (en && (touched.specEn || !specInDict) && (!original || en !== norm('specEn', original.specEn))) {
+    const specMoved = !!original && ('fruit' in out || 'specKo' in out);
+    if (en && (touched.specEn || !specInDict) && (!original || specMoved || en !== norm('specEn', original.specEn))) {
       out.specEn = en;
+    } else if (original && !en && !specInDict && norm('specEn', original.specEn)) {
+      // 사전에 없는 스펙의 영어를 지웠으면 줄에서도 지운다(빈 칸이 있어도 저장, 2026-11-10)
+      out.specEn = '';
     }
 
     // 회사: 바이어 기본 회사와 다를 때만 칸에 적는다(같으면 비워 두어 기본 회사를 따른다).
@@ -245,12 +244,13 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
 
   async function save() {
     if (saving) return;
-    if (missing.length) {
-      setError(`빈 칸을 채워 주세요: ${missing.join(', ')}`);
-      return;
-    }
     if (badMoney) {
       setError('금액은 숫자나 17.3/17.8처럼 넣어 주세요.');
+      return;
+    }
+    // 스펙 탭(사전)에 있는 영어는 그 스펙의 모든 줄이 쓰므로 여기서 지워도 그대로 보인다. 말없이 넘어가지 않게 알린다.
+    if (specInDict && touched.specEn && !norm('specEn', form.specEn)) {
+      setError('이 스펙의 영어는 스펙 탭에 있어서 여기서 비울 수 없어요. 바꾸려면 새 영어를 넣어 주세요.');
       return;
     }
     if (etaBeforeLoad && !window.confirm('ETA가 상차일보다 빨라요. 그래도 저장할까요?')) return;
@@ -285,31 +285,32 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
       : {
         kind: 'new',
         row: {
-          id: 'tmp-' + saveKey, buyer: form.buyer, no: asNo(shownNo),
+          id: 'tmp-' + saveKey, buyer: buyerToSave, no: asNo(shownNo),
           noAuto: !item.join && !item.no, // 보이는 번호는 미리 채운 값일 뿐(창구가 붙임): 달력 대 수에서 줄마다 1대
           noYear: item.join ? item.join.noYear : etaYear,
           fruit: form.fruit, ship: form.ship, specKo: form.specKo.trim(), specEn: norm('specEn', form.specEn),
           eta: form.etaTbd ? '' : form.eta, loadDate: form.loadDate,
           price: money('price'), cost: money('cost'), workCost: money('workCost'),
-          origin: form.origin.trim(), exporter: form.exporter || defaultExporter(data, form.buyer), status: '', qty: '', memo: ''
+          origin: form.origin.trim(), exporter: form.exporter || defaultExporter(data, buyerToSave), status: '', qty: '', memo: ''
         }
       };
-    const label = [buyerLabel(form.buyer), shownNo ? 'No. ' + shownNo : '', form.fruit, form.specKo.trim()].filter(Boolean).join(' ');
+    const label = [buyerLabel(buyerToSave), shownNo ? 'No. ' + shownNo : '', form.fruit, form.specKo.trim()].filter(Boolean).join(' ');
     setSaving(true);
-    const ok = await onSave([item], { buyer: form.buyer, eta: form.eta, fruit: form.fruit, optimistic, label });
+    const ok = await onSave([item], { buyer: buyerToSave, eta: form.eta, fruit: form.fruit, optimistic, label });
     if (!alive.current) {
       // 그사이 뒤로 가기로 화면을 떠났으면 이동하지 않는다. 실패만 알림으로 알린다(성공 알림은 App이 띄움).
       if (ok !== true && onSaveLost) onSaveLost(ok || '저장하지 못했어요.');
       return;
     }
     setSaving(false);
-    const movedBuyer = (mode === 'new' && form.buyer !== (presetBuyer || '')) || (src && form.buyer !== src.buyer);
+    const savedBuyer = mode === 'edit' ? form.buyer : buyerToSave;
+    const movedBuyer = (mode === 'new' && savedBuyer !== (presetBuyer || '')) || (src && savedBuyer !== src.buyer);
     if (ok !== true) {
       setError(ok || '저장하지 못했어요.');
     } else if (movedBuyer) {
-      replace(buyerPath(form.buyer)); // 홈에서 +로 왔거나 바이어를 바꿨으면 그 바이어 스케줄로
+      replace(buyerPath(savedBuyer)); // 홈에서 +로 왔거나 바이어를 바꿨으면 그 바이어 스케줄로
     } else {
-      back(buyerPath(form.buyer));
+      back(buyerPath(savedBuyer));
     }
   }
 
@@ -349,7 +350,7 @@ export default function Editor({ data, mode, id, presetBuyer, dupAs = 'same', on
   if (form.buyer && !buyerOptions.some((o) => o.value === form.buyer)) {
     buyerOptions.unshift({ value: form.buyer, label: `${form.buyer} (바이어 탭에 없음)` });
   }
-  const saveLabel = saving ? '저장 중…' : isTbdBuyer(form.buyer) ? '바이어 미정으로 저장'
+  const saveLabel = saving ? '저장 중…' : isTbdBuyer(buyerToSave) ? '바이어 미정으로 저장'
     : form.buyer && form.buyer.length <= 8 ? `${form.buyer} 스케줄에 저장` : '저장';
 
   return (

@@ -47,12 +47,21 @@ export function buildJpg(data, buyerName, { exporter = null, showPrice = true } 
 
   const missing = new Set();
   if (blankCount) missing.add(`회사가 비어 있는 줄 ${blankCount}개(바이어 탭 기본 회사나 스케줄 탭 회사 칸)`);
+  // 빈 칸이 있어도 저장되므로(2026-11-10 사용자 요청) 과일·운송·스펙이 빈 줄은 따로 센다
+  const blank = { 과일: 0, 운송: 0, 스펙: 0 };
   for (const r of mine) {
     if (showPrice && typeof r.price === 'string' && r.price.trim() && buyerPrice(r.price) === null) {
       missing.add(`바이어가 "${r.price.trim()}"에 한글이 있어 사진에는 TBC로 나가요`);
     }
-    if (!fruitEn[r.fruit]) missing.add(`과일 "${r.fruit}"의 영어(품목 탭)`);
-    if (!r.specEn) missing.add(`${r.fruit} "${r.specKo}"의 스펙 영어(스펙 탭)`);
+    if (!r.fruit) blank.과일++;
+    else if (!fruitEn[r.fruit]) missing.add(`과일 "${r.fruit}"의 영어(품목 탭)`);
+    if (!r.ship) blank.운송++;
+    if (r.specEn) continue;
+    if (!r.specKo) blank.스펙++;
+    else if (r.fruit) missing.add(`${r.fruit} "${r.specKo}"의 스펙 영어(스펙 탭)`); // 과일이 빈 줄은 과일부터(스펙 탭은 과일별)
+  }
+  for (const [label, n] of Object.entries(blank)) {
+    if (n) missing.add(`${label}이 비어 있는 줄 ${n}개(앱에서 그 줄을 눌러 채워요)`);
   }
   const currency = buyer.currency || 'USD';
   const model = {
