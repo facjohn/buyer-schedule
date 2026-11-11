@@ -14,7 +14,7 @@ import { Chip, Segmented } from '../components/Controls.jsx';
 import TbdChip from '../components/TbdChip.jsx';
 import LoadRow from '../components/LoadRow.jsx';
 import LoadCalendar from '../components/LoadCalendar.jsx';
-import { IconPlus, IconSheet } from '../components/icons.jsx';
+import { IconPlus } from '../components/icons.jsx';
 
 const VIEWS = [
   { value: 'buyers', label: '바이어별 보기' },
@@ -35,12 +35,8 @@ export default function Home({ data, fetchedAt, loading }) {
             {loading && !fetchedAt ? '불러오는 중…' : fetchedAt ? `${fmtKoDateTime(fetchedAt)} 업데이트` : ''}
           </div>
         </div>
+        {/* 시트 열기 버튼은 2026-11-11 사용자 요청으로 없앴다(+ 하나만) */}
         <div className="head-actions">
-          {data.sheetUrl && (
-            <a className="btn-pill" href={data.sheetUrl} target="_blank" rel="noopener noreferrer">
-              <IconSheet size={20} /> 시트
-            </a>
-          )}
           <button type="button" className="btn-round" aria-label="스케줄 추가" onClick={() => navigate('/new')}>
             <IconPlus size={26} />
           </button>
